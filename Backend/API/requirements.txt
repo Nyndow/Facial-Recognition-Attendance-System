@@ -1,0 +1,10 @@
+flask-sqlalchemy
+PyJWT
+flask_cors
+numpy
+opencv-python
+flask
+scikit-learn
+insightface
+onnxruntime
+reportlab

@@ -1,0 +1,20 @@
+Conception/
+# Python virtual environment
+Backend/venv/
+**/venv/
+
+# Python cache files
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
+
+# Node modules
+Frontend/my-app/node_modules/
+**/node_modules/
+
+# Optional: OS or IDE files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
