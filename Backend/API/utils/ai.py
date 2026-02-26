@@ -30,7 +30,7 @@ def _b64_to_image(image_b64: str) -> np.ndarray:
     Convert base64 string to OpenCV image
     """
     if "," in image_b64:
-        image_b64 = image_b64.split(",")[1]  # remove data:image/...;base64,
+        image_b64 = image_b64.split(",")[1]
 
     img_bytes = base64.b64decode(image_b64)
     img_array = np.frombuffer(img_bytes, dtype=np.uint8)
