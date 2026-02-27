@@ -3,6 +3,8 @@ import api from "@/lib/api";
 
 export interface SessionInfo {
   id: number;
+  idRoom?: number;
+  nameRoom?: string;
   room: string;
   subject: string;
   time: string | null;
