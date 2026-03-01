@@ -83,7 +83,12 @@ def sessions_by_class():
 
     result = [{
         "id": s.id,
-        "room": s.room,
+        "idRoom": s.idRoom,
+        "nameRoom": s.room_ref.nameRoom if s.room_ref else None,
+        "idCamera": s.room_ref.idCamera if s.room_ref else None,
+        "nameCamera": s.room_ref.camera_ref.nameCamera if s.room_ref and s.room_ref.camera_ref else None,
+        "urlCamera": s.room_ref.camera_ref.urlCamera if s.room_ref and s.room_ref.camera_ref else None,
+        "room": s.room_ref.nameRoom if s.room_ref else None,
         "subject": s.subject,
         "time": s.time.strftime("%Y-%m-%d %H:%M"),
         "teacher_id": s.teacher_id,
@@ -91,4 +96,3 @@ def sessions_by_class():
     } for s in sessions]
 
     return jsonify(result)
-

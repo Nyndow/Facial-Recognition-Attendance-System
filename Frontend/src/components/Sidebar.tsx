@@ -1,37 +1,40 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Sun, Moon, ChevronLeft, ChevronRight } from "lucide-react";
+import { useCameraStatus } from "@/hooks/useCameraStatus";
 
 export default function Sidebar() {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const sessionIdParam = searchParams.get("sessionId");
+  const parsedSessionId = sessionIdParam ? parseInt(sessionIdParam, 10) : NaN;
+  const sessionId = Number.isNaN(parsedSessionId) ? null : parsedSessionId;
 
-  const [theme, setTheme] = useState<"light" | "dark">("light");
+  const [theme, setTheme] = useState<"light" | "dark">(() => {
+    if (typeof window !== "undefined" && localStorage.getItem("theme") === "dark") {
+      return "dark";
+    }
+    return "light";
+  });
   const [collapsed, setCollapsed] = useState(false);
+  const { isOngoing, isActivationWindow, canToggle, socketConnected, isActive, hasCamera, loading, toggleCameraStatus } =
+    useCameraStatus(sessionId);
 
   useEffect(() => {
-    const stored = localStorage.getItem("theme");
-    if (stored === "dark") {
-      setTheme("dark");
+    if (theme === "dark") {
       document.documentElement.classList.add("dark");
+      localStorage.setItem("theme", "dark");
     } else {
-      setTheme("light");
       document.documentElement.classList.remove("dark");
+      localStorage.setItem("theme", "light");
     }
-  }, []);
+  }, [theme]);
 
   const toggleTheme = () => {
-    if (theme === "light") {
-      setTheme("dark");
-      localStorage.setItem("theme", "dark");
-      document.documentElement.classList.add("dark");
-    } else {
-      setTheme("light");
-      localStorage.setItem("theme", "light");
-      document.documentElement.classList.remove("dark");
-    }
+    setTheme((prev) => (prev === "light" ? "dark" : "light"));
   };
 
   const navItems = [
@@ -67,6 +70,7 @@ export default function Sidebar() {
           </button>
         </div>
       </div>
+      
 
       {/* Navigation */}
       <nav className="flex-1">
@@ -86,6 +90,41 @@ export default function Sidebar() {
           );
         })}
       </nav>
+
+                 {sessionId && (
+              <div className="mt-4">
+                <p className="mb-2">
+                  Camera:{" "}
+                  {(isOngoing || isActivationWindow) && hasCamera ? (
+                    <span className={isActive ? "font-semibold text-green-600" : "font-semibold text-red-600"}>
+                      {isActive ? "Active" : "Inactive"}
+                    </span>
+                  ) : (
+                    <span className="font-semibold text-gray-500">
+                      {hasCamera ? "No ongoing/nearby session" : "No camera"}
+                    </span>
+                  )}
+                </p>
+                <p className="mb-2 text-xs text-gray-500">
+                  Socket: {socketConnected ? "Connected" : "Disconnected"}
+                  {isActivationWindow ? " | Activation window (15 min)" : ""}
+                </p>
+                <button
+                  type="button"
+                  onClick={toggleCameraStatus}
+                  disabled={!canToggle || !hasCamera || loading}
+                  className={`w-full rounded px-3 py-2 text-sm font-medium text-white transition ${
+                    !canToggle || !hasCamera || loading
+                      ? "cursor-not-allowed bg-gray-400"
+                      : isActive
+                        ? "bg-red-500 hover:bg-red-600"
+                        : "bg-green-600 hover:bg-green-700"
+                  }`}
+                >
+                  {loading ? "Updating..." : isActive ? "Deactivate Camera" : "Activate Camera"}
+                </button>
+              </div>
+            )}
 
       {/* Status section */}
       <div className="mt-auto text-gray-600 dark:text-gray-300">

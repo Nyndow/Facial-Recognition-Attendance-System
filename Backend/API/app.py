@@ -11,6 +11,7 @@ from models.ClassSession import ClassSession
 from models.Attendance import Attendance
 from models.User import User
 from models.Room import Room
+from models.Camera import Camera
 
 #test
 
@@ -20,6 +21,7 @@ from routes.ClassSessionRoutes import class_session_bp
 from routes.ClassSessionStudentRoutes import class_session_student_bp
 from routes.AttendanceRoutes import attendance_bp
 from routes.RoomRoutes import room_bp
+from routes.CameraRoutes import camera_bp
 from routes.TeacherRoutes import teacher_bp
 from routes.UserRoutes import users_bp
 from routes.ClassRoutes import class_bp
@@ -43,6 +45,7 @@ def create_app():
     app.register_blueprint(class_session_student_bp)
     app.register_blueprint(attendance_bp)
     app.register_blueprint(room_bp)
+    app.register_blueprint(camera_bp)
     app.register_blueprint(teacher_bp)
     app.register_blueprint(users_bp)
     app.register_blueprint(class_bp)
