@@ -3,6 +3,7 @@
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { AxiosError } from "axios";
 import Image from "next/image";
+import { X } from "lucide-react";
 import Protected from "@/components/Protected";
 import api from "@/lib/api";
 import ToastStack, { ToastItem, ToastType } from "@/components/ToastStack";
@@ -398,9 +399,10 @@ export default function AdminStudentsPage() {
                     setCreateModalOpen(false);
                     stopCamera();
                   }}
-                  className="rounded border px-3 py-1 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  aria-label="Close create modal"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded border hover:bg-gray-100 dark:hover:bg-gray-700"
                 >
-                  Close
+                  <X size={16} />
                 </button>
               </div>
               {renderForm(true)}
@@ -416,9 +418,10 @@ export default function AdminStudentsPage() {
                 <button
                   type="button"
                   onClick={resetForm}
-                  className="rounded border px-3 py-1 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  aria-label="Close update modal"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded border hover:bg-gray-100 dark:hover:bg-gray-700"
                 >
-                  Close
+                  <X size={16} />
                 </button>
               </div>
               {renderForm(false)}

@@ -123,6 +123,8 @@ export default function Sidebar() {
           </div>
         </div>
 
+        <hr className="mb-4 border-gray-300 dark:border-gray-700" />
+
         <nav className="flex-1 overflow-y-auto">
           {navItems.map((item) => {
             const isActive =

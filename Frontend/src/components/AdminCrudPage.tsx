@@ -5,6 +5,7 @@ import api from "@/lib/api";
 import { AxiosError } from "axios";
 import ToastStack, { ToastItem, ToastType } from "@/components/ToastStack";
 import LoadingSpinner from "@/components/LoadingSpinner";
+import { X } from "lucide-react";
 
 export type CrudFieldType =
   | "text"
@@ -344,9 +345,10 @@ export default function AdminCrudPage({
               <button
                 type="button"
                 onClick={() => setCreateModalOpen(false)}
-                className="rounded border px-3 py-1 hover:bg-gray-100 dark:hover:bg-gray-700"
+                aria-label="Close create modal"
+                className="inline-flex h-9 w-9 items-center justify-center rounded border hover:bg-gray-100 dark:hover:bg-gray-700"
               >
-                Close
+                <X size={16} />
               </button>
             </div>
             {renderForm(true)}
@@ -362,9 +364,10 @@ export default function AdminCrudPage({
               <button
                 type="button"
                 onClick={resetForm}
-                className="rounded border px-3 py-1 hover:bg-gray-100 dark:hover:bg-gray-700"
+                aria-label="Close update modal"
+                className="inline-flex h-9 w-9 items-center justify-center rounded border hover:bg-gray-100 dark:hover:bg-gray-700"
               >
-                Close
+                <X size={16} />
               </button>
             </div>
             {renderForm(false)}

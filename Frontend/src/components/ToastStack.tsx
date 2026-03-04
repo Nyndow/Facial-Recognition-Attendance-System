@@ -1,5 +1,7 @@
 "use client";
 
+import { X } from "lucide-react";
+
 export type ToastType = "success" | "error";
 
 export interface ToastItem {
@@ -32,9 +34,10 @@ export default function ToastStack({ toasts, onDismiss }: ToastStackProps) {
             <button
               type="button"
               onClick={() => onDismiss(toast.id)}
-              className="rounded px-2 py-0.5 text-xs hover:bg-black/5"
+              aria-label="Close toast"
+              className="inline-flex h-6 w-6 items-center justify-center rounded hover:bg-black/5"
             >
-              Close
+              <X size={14} />
             </button>
           </div>
         </div>
