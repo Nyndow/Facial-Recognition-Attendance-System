@@ -6,125 +6,15 @@ from models.Room import Room
 from utils.utilToken import token_required, admin_required
 from utils.utilPdf import generate_attendance_pdf
 
-from datetime import datetime, timedelta, timezone
-import os
+from datetime import datetime
 class_session_bp = Blueprint("class_sessions", __name__)
-
-SESSION_DURATION_MINUTES = int(os.getenv("SESSION_DURATION_MINUTES", "120"))
-SESSION_ACTIVATION_WINDOW_MINUTES = int(os.getenv("SESSION_ACTIVATION_WINDOW_MINUTES", "15"))
-_camera_manual_status_by_camera = {}
-_camera_socket_status_by_camera = {}
-
-
-def _normalize_datetime(dt):
-    if dt is None:
-        return None
-    if dt.tzinfo is None:
-        return dt
-    return dt.astimezone(timezone.utc).replace(tzinfo=None)
-
-def _is_session_ongoing(session_time):
-    normalized_time = _normalize_datetime(session_time)
-    if not normalized_time:
-        return False
-    now = datetime.utcnow()
-    session_end = normalized_time + timedelta(minutes=SESSION_DURATION_MINUTES)
-    return normalized_time <= now <= session_end
-
-def _sessions_for_camera(camera_id):
-    if not camera_id:
-        return []
-    return (
-        ClassSession.query
-        .join(Room, ClassSession.idRoom == Room.idRoom)
-        .filter(Room.idCamera == camera_id)
-        .all()
-    )
-
-def _camera_has_ongoing_session(camera_id, now=None):
-    if not camera_id:
-        return False
-    if now is None:
-        now = datetime.utcnow()
-    for class_session in _sessions_for_camera(camera_id):
-        session_time = _normalize_datetime(class_session.time)
-        if not session_time:
-            continue
-        session_end = session_time + timedelta(minutes=SESSION_DURATION_MINUTES)
-        if session_time <= now <= session_end:
-            return True
-    return False
-
-def _camera_has_session_within_window(camera_id, now=None):
-    if not camera_id:
-        return False
-    if now is None:
-        now = datetime.utcnow()
-    window_end = now + timedelta(minutes=SESSION_ACTIVATION_WINDOW_MINUTES)
-    for class_session in _sessions_for_camera(camera_id):
-        session_time = _normalize_datetime(class_session.time)
-        if not session_time:
-            continue
-        if now <= session_time <= window_end:
-            return True
-    return False
-
-def _is_camera_socket_connected(camera_id):
-    return _camera_socket_status_by_camera.get(camera_id, False)
-
-def _resolve_camera_status(session):
-    is_ongoing_session = _is_session_ongoing(session.time)
-    camera_id = session.room_ref.idCamera if session.room_ref else None
-
-    if not camera_id:
-        return {
-            "is_ongoing_session": is_ongoing_session,
-            "is_activation_window": False,
-            "can_toggle": False,
-            "socket_connected": False,
-            "is_active": False
-        }
-
-    now = datetime.utcnow()
-    has_ongoing_under_camera = _camera_has_ongoing_session(camera_id, now)
-    is_activation_window = (
-        _camera_has_session_within_window(camera_id, now) and not has_ongoing_under_camera
-    )
-
-    can_toggle = is_ongoing_session or is_activation_window
-
-    # Reset if outside allowed period
-    if not can_toggle:
-        _camera_manual_status_by_camera[camera_id] = False
-
-    is_active = _camera_manual_status_by_camera.get(camera_id, False)
-
-    return {
-        "is_ongoing_session": is_ongoing_session,
-        "is_activation_window": is_activation_window,
-        "can_toggle": can_toggle,
-        "socket_connected": False,
-        "is_active": is_active
-    }
 
 def _serialize_session(session, class_name=None, teacher_name=None):
     room_name = session.room_ref.nameRoom if session.room_ref else None
-    camera_id = session.room_ref.idCamera if session.room_ref else None
-    camera_name = session.room_ref.camera_ref.nameCamera if session.room_ref and session.room_ref.camera_ref else None
-    camera_url = session.room_ref.camera_ref.urlCamera if session.room_ref and session.room_ref.camera_ref else None
-    camera_status = _resolve_camera_status(session)
     return {
         "id": session.id,
         "idRoom": session.idRoom,
         "nameRoom": room_name,
-        "idCamera": camera_id,
-        "nameCamera": camera_name,
-        "urlCamera": camera_url,
-        "is_ongoing": camera_status["is_ongoing_session"],
-        "is_activation_window": camera_status["is_activation_window"],
-        "camera_status_active": camera_status["is_active"],
-        "camera_can_toggle": camera_status["can_toggle"],
-        "camera_socket_connected": camera_status["socket_connected"],
         "room": room_name,  # backward-compatible response field
         "subject": session.subject,
         "time": session.time.isoformat() if session.time else None,
@@ -321,63 +211,3 @@ def export_attendance():
         as_attachment=True,
         download_name=f"attendance_{session.get('id', 'sheet')}.pdf"
     )
-
-@class_session_bp.route("/sessions/<int:session_id>/camera-status", methods=["GET"])
-@token_required
-def get_camera_status(session_id):
-    session = ClassSession.query.get(session_id)
-    if not session:
-        return jsonify({"error": "Session not found"}), 404
-
-    camera_id = session.room_ref.idCamera if session.room_ref else None
-    camera_status = _resolve_camera_status(session)
-    return jsonify({
-        "session_id": session.id,
-        "camera_id": camera_id,
-        "is_ongoing": camera_status["is_ongoing_session"],
-        "is_activation_window": camera_status["is_activation_window"],
-        "can_toggle": camera_status["can_toggle"],
-        "socket_connected": camera_status["socket_connected"],
-        "is_active": camera_status["is_active"]
-    })
-
-@class_session_bp.route("/sessions/<int:session_id>/camera-status", methods=["PUT"])
-@token_required
-def update_camera_status(session_id):
-    session = ClassSession.query.get(session_id)
-    if not session:
-        return jsonify({"error": "Session not found"}), 404
-
-    camera_id = session.room_ref.idCamera if session.room_ref else None
-    if not camera_id:
-        return jsonify({"error": "No camera associated with this session"}), 400
-
-    data = request.get_json(silent=True) or {}
-    if "isActive" not in data or not isinstance(data.get("isActive"), bool):
-        return jsonify({"error": "isActive boolean is required"}), 400
-
-    camera_status = _resolve_camera_status(session)
-    if not camera_status["can_toggle"]:
-        return jsonify({"error": "Camera can only be toggled during ongoing session or 15-minute activation window"}), 400
-
-    _camera_manual_status_by_camera[camera_id] = data["isActive"]
-    updated_status = _resolve_camera_status(session)
-    return jsonify({
-        "session_id": session.id,
-        "camera_id": camera_id,
-        "is_ongoing": updated_status["is_ongoing_session"],
-        "is_activation_window": updated_status["is_activation_window"],
-        "can_toggle": updated_status["can_toggle"],
-        "socket_connected": updated_status["socket_connected"],
-        "is_active": updated_status["is_active"]
-    })
-
-@class_session_bp.route("/cameras/<int:camera_id>/socket-status", methods=["PUT"])
-@token_required
-def update_camera_socket_status(camera_id):
-    data = request.get_json(silent=True) or {}
-    if "connected" not in data or not isinstance(data.get("connected"), bool):
-        return jsonify({"error": "connected boolean is required"}), 400
-
-    _camera_socket_status_by_camera[camera_id] = data["connected"]
-    return jsonify({"camera_id": camera_id, "socket_connected": _camera_socket_status_by_camera[camera_id]})

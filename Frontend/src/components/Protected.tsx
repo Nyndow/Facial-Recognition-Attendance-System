@@ -1,26 +1,53 @@
 "use client";
 
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useEffect } from "react";
 import { useAuth } from "../hooks/useAuth";
 import { useRouter } from "next/navigation";
 
 interface Props {
   children: ReactNode;
+  adminOnly?: boolean;
+  nonAdminOnly?: boolean;
 }
 
-export default function Protected({ children }: Props) {
+export default function Protected({
+  children,
+  adminOnly = false,
+  nonAdminOnly = false,
+}: Props) {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const [initialized, setInitialized] = useState(false);
+  const hasToken =
+    typeof window !== "undefined" && Boolean(localStorage.getItem("token"));
 
   useEffect(() => {
-    if (!loading) {
-      if (!user) router.push("/login");
-      else setInitialized(true);
+    if (!hasToken) {
+      router.replace("/login");
     }
-  }, [user, loading, router]);
+  }, [hasToken, router]);
 
-  if (loading || !initialized) return <p>Loading...</p>;
+  useEffect(() => {
+    if (hasToken && !loading && !user) {
+      router.replace("/login");
+    }
+  }, [hasToken, user, loading, router]);
+
+  useEffect(() => {
+    if (!hasToken || loading || !user) return;
+
+    if (adminOnly && !user.isAdmin) {
+      router.replace("/dashboard");
+      return;
+    }
+
+    if (nonAdminOnly && user.isAdmin) {
+      router.replace("/dashboard/admin");
+    }
+  }, [hasToken, loading, user, adminOnly, nonAdminOnly, router]);
+
+  if (!hasToken || loading || !user) return <p>Loading...</p>;
+  if (adminOnly && !user.isAdmin) return <p>Loading...</p>;
+  if (nonAdminOnly && user.isAdmin) return <p>Loading...</p>;
 
   return <>{children}</>;
 }

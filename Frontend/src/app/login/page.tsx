@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useAuth } from "../../hooks/useAuth";
 import { useRouter } from "next/navigation";
+import { AxiosError } from "axios";
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -15,10 +16,15 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await login(username, password);
-      router.push("/dashboard");
-    } catch (err: any) {
-      setError(err.response?.data?.error || "Login failed");
+      const authenticatedUser = await login(username, password);
+      if (authenticatedUser?.isAdmin) {
+        router.push("/dashboard/admin");
+      } else {
+        router.push("/dashboard");
+      }
+    } catch (err: unknown) {
+      const error = err as AxiosError<{ error?: string }>;
+      setError(error.response?.data?.error || "Login failed");
     }
   };
 

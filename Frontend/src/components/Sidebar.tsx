@@ -1,17 +1,22 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Sun, Moon, ChevronLeft, ChevronRight } from "lucide-react";
-import { useCameraStatus } from "@/hooks/useCameraStatus";
+import { usePathname, useRouter } from "next/navigation";
+import {
+  Sun,
+  Moon,
+  ChevronLeft,
+  ChevronRight,
+  UserCircle2,
+  User,
+  LogOut,
+} from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function Sidebar() {
   const router = useRouter();
   const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const sessionIdParam = searchParams.get("sessionId");
-  const parsedSessionId = sessionIdParam ? parseInt(sessionIdParam, 10) : NaN;
-  const sessionId = Number.isNaN(parsedSessionId) ? null : parsedSessionId;
+  const { user } = useAuth();
 
   const [theme, setTheme] = useState<"light" | "dark">(() => {
     if (typeof window !== "undefined" && localStorage.getItem("theme") === "dark") {
@@ -20,8 +25,7 @@ export default function Sidebar() {
     return "light";
   });
   const [collapsed, setCollapsed] = useState(false);
-  const { isOngoing, isActivationWindow, canToggle, socketConnected, isActive, hasCamera, loading, toggleCameraStatus } =
-    useCameraStatus(sessionId);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   useEffect(() => {
     if (theme === "dark") {
@@ -37,9 +41,28 @@ export default function Sidebar() {
     setTheme((prev) => (prev === "light" ? "dark" : "light"));
   };
 
-  const navItems = [
-    { href: "/dashboard", label: "Dashboard", icon: "D" },
-  ];
+  const handleProfile = () => {
+    setUserMenuOpen(false);
+    router.push("/profile");
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    setUserMenuOpen(false);
+    router.replace("/login");
+  };
+
+  const navItems = user?.isAdmin
+    ? [
+        { href: "/dashboard/admin", label: "Admin Home", icon: "A" },
+        { href: "/dashboard/admin/users", label: "Users", icon: "U" },
+        { href: "/dashboard/admin/classes", label: "Classes", icon: "C" },
+        { href: "/dashboard/admin/teachers", label: "Teachers", icon: "T" },
+        { href: "/dashboard/admin/rooms", label: "Rooms", icon: "R" },
+        { href: "/dashboard/admin/cameras", label: "Cameras", icon: "M" },
+        { href: "/dashboard/admin/sessions", label: "Sessions", icon: "X" },
+      ]
+    : [{ href: "/dashboard", label: "Dashboard", icon: "D" }];
 
   return (
     <aside
@@ -51,7 +74,7 @@ export default function Sidebar() {
       <div className="flex items-center justify-between mb-6">
         {!collapsed && (
           <h1 className="text-xl font-bold text-gray-800 dark:text-white">
-            Dashboard
+            {user?.isAdmin ? "Admin" : "Dashboard"}
           </h1>
         )}
 
@@ -75,7 +98,9 @@ export default function Sidebar() {
       {/* Navigation */}
       <nav className="flex-1">
         {navItems.map((item) => {
-          const isActive = pathname === item.href;
+          const isActive =
+            pathname === item.href ||
+            (item.href !== "/dashboard" && pathname.startsWith(`${item.href}/`));
           return (
             <div
               key={item.href}
@@ -90,53 +115,33 @@ export default function Sidebar() {
           );
         })}
       </nav>
+      {/* User menu */}
+      <div className="mt-auto relative">
+        <button
+          onClick={() => setUserMenuOpen((prev) => !prev)}
+          className="w-full flex items-center rounded p-2 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 transition"
+        >
+          <UserCircle2 size={20} />
+          {!collapsed && <span className="ml-3 font-medium">Account</span>}
+        </button>
 
-                 {sessionId && (
-              <div className="mt-4">
-                <p className="mb-2">
-                  Camera:{" "}
-                  {(isOngoing || isActivationWindow) && hasCamera ? (
-                    <span className={isActive ? "font-semibold text-green-600" : "font-semibold text-red-600"}>
-                      {isActive ? "Active" : "Inactive"}
-                    </span>
-                  ) : (
-                    <span className="font-semibold text-gray-500">
-                      {hasCamera ? "No ongoing/nearby session" : "No camera"}
-                    </span>
-                  )}
-                </p>
-                <p className="mb-2 text-xs text-gray-500">
-                  Socket: {socketConnected ? "Connected" : "Disconnected"}
-                  {isActivationWindow ? " | Activation window (15 min)" : ""}
-                </p>
-                <button
-                  type="button"
-                  onClick={toggleCameraStatus}
-                  disabled={!canToggle || !hasCamera || loading}
-                  className={`w-full rounded px-3 py-2 text-sm font-medium text-white transition ${
-                    !canToggle || !hasCamera || loading
-                      ? "cursor-not-allowed bg-gray-400"
-                      : isActive
-                        ? "bg-red-500 hover:bg-red-600"
-                        : "bg-green-600 hover:bg-green-700"
-                  }`}
-                >
-                  {loading ? "Updating..." : isActive ? "Deactivate Camera" : "Activate Camera"}
-                </button>
-              </div>
-            )}
-
-      {/* Status section */}
-      <div className="mt-auto text-gray-600 dark:text-gray-300">
-        {!collapsed && (
-          <>
-            <p>
-              Logged in as: <span className="font-semibold">Admin</span>
-            </p>
-            <p>
-              Status: <span className="font-semibold text-green-600">Online</span>
-            </p>
-          </>
+        {userMenuOpen && (
+          <div className="absolute bottom-12 left-0 w-full rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg overflow-hidden z-20">
+            <button
+              onClick={handleProfile}
+              className="w-full px-3 py-2 text-left flex items-center gap-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+            >
+              <User size={16} />
+              <span>Profile</span>
+            </button>
+            <button
+              onClick={handleLogout}
+              className="w-full px-3 py-2 text-left flex items-center gap-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+            >
+              <LogOut size={16} />
+              <span>Logout</span>
+            </button>
+          </div>
         )}
       </div>
     </aside>

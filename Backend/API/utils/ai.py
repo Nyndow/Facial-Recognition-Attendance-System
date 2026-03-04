@@ -3,6 +3,7 @@ import cv2
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
 import insightface
+from datetime import datetime
 
 from models.Student import Student
 from models.ClassSession import ClassSession
@@ -65,9 +66,8 @@ def _extract_embedding(image_b64: str) -> np.ndarray:
 
     return embedding.astype(float)
 
-
 # =============================
-# PUBLIC API
+# PUBLIC API (ORIGINAL)
 # =============================
 def register_face(name: str, matricule: str, image_b64: str):
     embedding = _extract_embedding(image_b64)
@@ -87,7 +87,6 @@ def register_face(name: str, matricule: str, image_b64: str):
 def recognize_face(image_b64: str, session_id: int):
     print("Step 1: Start recognize_face")
     
-    # Step 2: Extract embedding
     try:
         embedding = _extract_embedding(image_b64)
         print("Step 2: embedding shape:", embedding.shape if hasattr(embedding, "shape") else embedding)
@@ -95,38 +94,28 @@ def recognize_face(image_b64: str, session_id: int):
         print("Error extracting embedding:", e)
         return None
 
-    # Step 3: Get the session
     session = ClassSession.query.get(session_id)
     print("Step 3: session found?", session is not None)
     if not session:
-        print("Step 3: No session with id", session_id)
         return None
 
-    # Step 4: Get students for that class
     students = Student.query.filter_by(class_id=session.class_id).all()
     print(f"Step 4: Found {len(students)} students in class {session.class_id}")
     if not students:
-        print("Step 4: No students found")
         return None
 
-    # Step 5: Compute similarity
     try:
         db_embeddings = np.array([s.face_emb for s in students])
         similarities = cosine_similarity([embedding], db_embeddings)[0]
-        print("Step 5: similarities", similarities)
     except Exception as e:
         print("Error computing similarity:", e)
         return None
 
-    # Step 6: Find best match
     best_idx = int(np.argmax(similarities))
     best_score = float(similarities[best_idx])
-    print(f"Step 6: Best score {best_score} at index {best_idx}")
 
-    # Step 7: Check threshold
     if best_score >= SIMILARITY_THRESHOLD:
         s = students[best_idx]
-        print(f"Step 7: Match found - {s.name}")
         return {
             "id": s.id,
             "name": s.name,
@@ -134,5 +123,108 @@ def recognize_face(image_b64: str, session_id: int):
             "score": round(best_score, 3),
         }
 
-    print("Step 7: No match above threshold")
     return None
+
+
+# ==========================================================
+# ===================== NEW FUNCTIONS ======================
+# ==========================================================
+
+# =============================
+# Extract ALL embeddings from image
+# =============================
+def extract_all_embeddings(image_b64: str):
+    img = _b64_to_image(image_b64)
+    faces = _face_app.get(img)
+
+    if not faces or len(faces) == 0:
+        raise ValueError("No faces detected")
+
+    return [face.embedding.astype(float) for face in faces]
+
+
+# =============================
+# Recognize MULTIPLE faces
+# =============================
+def recognize_multiple_faces(image_b64: str, session_id: int):
+    session = ClassSession.query.get(session_id)
+    if not session:
+        return []
+
+    students = Student.query.filter_by(class_id=session.class_id).all()
+    if not students:
+        return []
+
+    db_embeddings = np.array([s.face_emb for s in students])
+    embeddings = extract_all_embeddings(image_b64)
+
+    results = []
+
+    for emb in embeddings:
+        similarities = cosine_similarity([emb], db_embeddings)[0]
+        best_idx = int(np.argmax(similarities))
+        best_score = float(similarities[best_idx])
+
+        if best_score >= SIMILARITY_THRESHOLD:
+            s = students[best_idx]
+            results.append({
+                "id": s.id,
+                "name": s.name,
+                "matricule": s.matricule,
+                "score": round(best_score, 3),
+            })
+
+    return results
+
+
+# =============================
+# Update student face
+# =============================
+def update_student_face(student_id: int, image_b64: str):
+    student = Student.query.get(student_id)
+    if not student:
+        return None
+
+    embedding = _extract_embedding(image_b64)
+    student.face_emb = embedding.tolist()
+
+    db.session.commit()
+    return student
+
+# =============================
+# Manual similarity check
+# =============================
+def compare_two_faces(image1_b64: str, image2_b64: str):
+    emb1 = _extract_embedding(image1_b64)
+    emb2 = _extract_embedding(image2_b64)
+
+    score = cosine_similarity([emb1], [emb2])[0][0]
+
+    return {
+        "similarity": round(float(score), 4),
+        "match": score >= SIMILARITY_THRESHOLD
+    }
+
+
+# =============================
+# Mark attendance
+# =============================
+def mark_attendance(student_id: int, session_id: int):
+    student = Student.query.get(student_id)
+    session = ClassSession.query.get(session_id)
+
+    if not student or not session:
+        return None
+
+    # Example: assuming session has attendance list
+    if not hasattr(session, "attendees"):
+        session.attendees = []
+
+    session.attendees.append(student.id)
+    db.session.commit()
+
+    return {
+        "student": student.name,
+        "session": session.id,
+        "timestamp": datetime.utcnow().isoformat()
+    }
