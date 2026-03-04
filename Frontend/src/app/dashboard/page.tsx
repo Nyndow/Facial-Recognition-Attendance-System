@@ -4,6 +4,7 @@ import { useSessions } from "@/hooks/useSessions";
 import Protected from "@/components/Protected";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
+import LoadingSpinner from "@/components/LoadingSpinner";
 
 function DashboardContent() {
   const { sessions, loading } = useSessions();
@@ -14,32 +15,32 @@ function DashboardContent() {
   };
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
-      <h1 className="text-3xl font-bold mb-6">Today&apos;s Sessions</h1>
+    <div className="mx-auto max-w-6xl p-4 sm:p-6">
+      <h1 className="mb-6 text-2xl font-bold sm:text-3xl">Today&apos;s Sessions</h1>
 
       {loading ? (
-        <p>Loading sessions...</p>
+        <LoadingSpinner label="Loading sessions..." />
       ) : sessions.length === 0 ? (
         <p>No sessions found.</p>
       ) : (
-        <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {sessions.map((session) => (
             <div
               key={session.id}
               onClick={() => handleClick(session.id)}
-              className="border rounded-lg p-4 shadow hover:shadow-lg transition-shadow bg-white dark:bg-gray-800 cursor-pointer"
+              className="cursor-pointer rounded-lg border bg-white p-4 shadow transition-shadow hover:shadow-lg dark:bg-gray-800"
             >
-              <h2 className="text-xl font-semibold mb-2">{session.subject}</h2>
-              <p className="text-gray-600 dark:text-gray-300 mb-1">
+              <h2 className="mb-2 text-lg font-semibold sm:text-xl">{session.subject}</h2>
+              <p className="mb-1 text-sm text-gray-600 dark:text-gray-300 sm:text-base">
                 Class: {session.class_name || "N/A"}
               </p>
-              <p className="text-gray-600 dark:text-gray-300 mb-1">
+              <p className="mb-1 text-sm text-gray-600 dark:text-gray-300 sm:text-base">
                 Room: {session.room}
               </p>
-              <p className="text-gray-600 dark:text-gray-300 mb-1">
+              <p className="mb-1 text-sm text-gray-600 dark:text-gray-300 sm:text-base">
                 Teacher: {session.teacher_name || "N/A"}
               </p>
-              <p className="text-gray-600 dark:text-gray-300">
+              <p className="text-sm text-gray-600 dark:text-gray-300 sm:text-base">
                 Time: {format(new Date(session.time), "PPPp")}
               </p>
             </div>

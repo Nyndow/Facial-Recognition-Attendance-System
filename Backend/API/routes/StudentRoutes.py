@@ -77,9 +77,18 @@ def update_student(student_id):
     student = Student.query.get_or_404(student_id)
     data = request.json
     student.name = data.get("name", student.name)
-    student.face_emb = data.get("face_emb", student.face_emb)
     student.matricule = data.get("matricule", student.matricule)
     student.class_id = data.get("class_id", student.class_id)
+
+    image_b64 = data.get("image")
+    if image_b64:
+        try:
+            student.face_emb = _extract_embedding(image_b64).tolist()
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 400
+    else:
+        student.face_emb = data.get("face_emb", student.face_emb)
+
     db.session.commit()
     return jsonify({"message": "Student updated"})
 

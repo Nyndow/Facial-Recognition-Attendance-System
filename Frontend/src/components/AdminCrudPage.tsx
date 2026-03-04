@@ -3,8 +3,21 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import api from "@/lib/api";
 import { AxiosError } from "axios";
+import ToastStack, { ToastItem, ToastType } from "@/components/ToastStack";
+import LoadingSpinner from "@/components/LoadingSpinner";
 
-export type CrudFieldType = "text" | "number" | "password" | "checkbox" | "datetime-local";
+export type CrudFieldType =
+  | "text"
+  | "number"
+  | "password"
+  | "checkbox"
+  | "datetime-local"
+  | "select";
+
+export interface CrudSelectOption {
+  label: string;
+  value: string | number;
+}
 
 export interface CrudField {
   key: string;
@@ -13,6 +26,9 @@ export interface CrudField {
   required?: boolean;
   requiredOnCreate?: boolean;
   placeholder?: string;
+  options?: CrudSelectOption[];
+  optionPlaceholder?: string;
+  valueType?: "string" | "number";
 }
 
 export interface CrudColumn {
@@ -71,10 +87,22 @@ export default function AdminCrudPage({
   const [form, setForm] = useState<FormState>(() => buildInitialForm(fields));
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
+  const [toasts, setToasts] = useState<ToastItem[]>([]);
   const [editingId, setEditingId] = useState<string | number | null>(null);
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | number | null>(null);
+
+  const showToast = useCallback((type: ToastType, message: string) => {
+    const id = Date.now() + Math.floor(Math.random() * 1000);
+    setToasts((prev) => [...prev, { id, type, message }]);
+    window.setTimeout(() => {
+      setToasts((prev) => prev.filter((toast) => toast.id !== id));
+    }, 3500);
+  }, []);
+
+  const dismissToast = (id: number) => {
+    setToasts((prev) => prev.filter((toast) => toast.id !== id));
+  };
 
   const resolvedIdKey = useMemo(
     () => (idKey ? idKey : inferIdKey(items[0])),
@@ -89,8 +117,6 @@ export default function AdminCrudPage({
   const openCreateModal = () => {
     resetForm();
     setCreateModalOpen(true);
-    setError("");
-    setMessage("");
   };
 
   const parseError = (err: unknown): string => {
@@ -104,18 +130,17 @@ export default function AdminCrudPage({
 
   const loadItems = useCallback(async () => {
     setLoading(true);
-    setError("");
     try {
       const res = await api.get(endpoint);
       const rows = Array.isArray(res.data) ? (res.data as Row[]) : [];
       setItems(rows);
     } catch (err: unknown) {
-      setError(parseError(err));
+      showToast("error", parseError(err));
       setItems([]);
     } finally {
       setLoading(false);
     }
-  }, [endpoint]);
+  }, [endpoint, showToast]);
 
   useEffect(() => {
     loadItems();
@@ -153,6 +178,15 @@ export default function AdminCrudPage({
         return;
       }
 
+      if (field.type === "select") {
+        if (field.valueType === "number") {
+          payload[field.key] = Number(value);
+        } else {
+          payload[field.key] = value;
+        }
+        return;
+      }
+
       if (field.type === "datetime-local") {
         payload[field.key] = new Date(value).toISOString();
         return;
@@ -167,23 +201,21 @@ export default function AdminCrudPage({
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
-    setError("");
-    setMessage("");
     try {
       const isCreate = editingId === null;
       const payload = buildPayload(isCreate);
       if (isCreate) {
         await api.post(endpoint, payload);
-        setMessage(`${title} created successfully.`);
+        showToast("success", `${title} created successfully.`);
         setCreateModalOpen(false);
       } else {
         await api.put(`${endpoint}/${editingId}`, payload);
-        setMessage(`${title} updated successfully.`);
+        showToast("success", `${title} updated successfully.`);
       }
       resetForm();
       await loadItems();
     } catch (err: unknown) {
-      setError(parseError(err));
+      showToast("error", parseError(err));
     } finally {
       setSubmitting(false);
     }
@@ -207,24 +239,24 @@ export default function AdminCrudPage({
     setForm(nextForm);
     setEditingId(idValue);
     setCreateModalOpen(false);
-    setMessage("");
-    setError("");
   };
 
-  const handleDelete = async (row: Row) => {
+  const promptDelete = (row: Row) => {
     const idValue = row[resolvedIdKey];
     if (typeof idValue !== "string" && typeof idValue !== "number") return;
-    if (!window.confirm(`Delete this ${title.toLowerCase()} entry?`)) return;
+    setPendingDeleteId(idValue);
+  };
 
-    setError("");
-    setMessage("");
+  const confirmDelete = async () => {
+    if (pendingDeleteId === null) return;
     try {
-      await api.delete(`${endpoint}/${idValue}`);
-      setMessage(`${title} deleted successfully.`);
+      await api.delete(`${endpoint}/${pendingDeleteId}`);
+      showToast("success", `${title} deleted successfully.`);
       await loadItems();
-      if (editingId === idValue) resetForm();
+      if (editingId === pendingDeleteId) resetForm();
+      setPendingDeleteId(null);
     } catch (err: unknown) {
-      setError(parseError(err));
+      showToast("error", parseError(err));
     }
   };
 
@@ -243,6 +275,20 @@ export default function AdminCrudPage({
               onChange={(e) => setFieldValue(field, e.target.checked)}
               className="h-4 w-4"
             />
+          ) : field.type === "select" ? (
+            <select
+              value={toStringValue(form[field.key])}
+              onChange={(e) => setFieldValue(field, e.target.value)}
+              required={Boolean(field.required || (isCreate && field.requiredOnCreate))}
+              className="w-full rounded border p-2 dark:bg-gray-700 dark:text-white"
+            >
+              <option value="">{field.optionPlaceholder ?? "Select an option"}</option>
+              {(field.options ?? []).map((option) => (
+                <option key={String(option.value)} value={String(option.value)}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
           ) : (
             <input
               type={field.type}
@@ -255,7 +301,7 @@ export default function AdminCrudPage({
           )}
         </label>
       ))}
-      <div className="md:col-span-2 flex gap-3">
+      <div className="flex flex-col gap-3 md:col-span-2 sm:flex-row">
         <button
           type="submit"
           disabled={submitting}
@@ -277,33 +323,23 @@ export default function AdminCrudPage({
   );
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
-      <div className="mb-5 flex items-center justify-between gap-4">
-        <h1 className="text-3xl font-bold">{title}</h1>
+    <div className="mx-auto max-w-5xl p-4 sm:p-6">
+      <ToastStack toasts={toasts} onDismiss={dismissToast} />
+      <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-2xl font-bold sm:text-3xl">{title}</h1>
         <button
           type="button"
           onClick={openCreateModal}
-          className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+          className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 sm:w-auto"
         >
           Create
         </button>
       </div>
 
-      {error && (
-        <div className="mb-4 rounded border border-red-200 bg-red-50 p-3 text-red-700">
-          {error}
-        </div>
-      )}
-      {message && (
-        <div className="mb-4 rounded border border-green-200 bg-green-50 p-3 text-green-700">
-          {message}
-        </div>
-      )}
-
       {createModalOpen && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-2xl rounded-lg border bg-white dark:bg-gray-800 shadow-lg p-5">
-            <div className="mb-4 flex items-center justify-between">
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg border bg-white p-5 shadow-lg dark:bg-gray-800">
+            <div className="mb-4 flex items-center justify-between gap-3">
               <h2 className="text-lg font-semibold">Create {title}</h2>
               <button
                 type="button"
@@ -319,29 +355,67 @@ export default function AdminCrudPage({
       )}
 
       {editingId !== null && (
-        <div className="rounded-lg border bg-white dark:bg-gray-800 shadow-sm p-5 mb-6">
-          <h2 className="text-lg font-semibold mb-4">Update {title}</h2>
-          {renderForm(false)}
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg border bg-white p-5 shadow-lg dark:bg-gray-800">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <h2 className="text-lg font-semibold">Update {title}</h2>
+              <button
+                type="button"
+                onClick={resetForm}
+                className="rounded border px-3 py-1 hover:bg-gray-100 dark:hover:bg-gray-700"
+              >
+                Close
+              </button>
+            </div>
+            {renderForm(false)}
+          </div>
         </div>
       )}
 
-      <div className="rounded-lg border bg-white dark:bg-gray-800 shadow-sm p-5">
-        <h2 className="text-lg font-semibold mb-4">{title} List</h2>
+      {pendingDeleteId !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md rounded-lg border bg-white p-5 shadow-lg dark:bg-gray-800">
+            <h2 className="text-lg font-semibold">Confirm Delete</h2>
+            <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+              Delete this {title.toLowerCase()} entry? This action cannot be undone.
+            </p>
+            <div className="mt-4 flex gap-3">
+              <button
+                type="button"
+                onClick={confirmDelete}
+                className="rounded bg-red-600 px-4 py-2 text-white hover:bg-red-700"
+              >
+                Delete
+              </button>
+              <button
+                type="button"
+                onClick={() => setPendingDeleteId(null)}
+                className="rounded border px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="rounded-lg border bg-white p-4 shadow-sm dark:bg-gray-800 sm:p-5">
+        <h2 className="mb-4 text-lg font-semibold">{title} List</h2>
         {loading ? (
-          <p>Loading...</p>
+          <LoadingSpinner label={`Loading ${title.toLowerCase()}...`} />
         ) : items.length === 0 ? (
           <p>No data found.</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-full border rounded-lg overflow-hidden">
+            <table className="min-w-full overflow-hidden rounded-lg border text-sm sm:text-base">
               <thead className="bg-gray-100 dark:bg-gray-700">
                 <tr>
                   {columns.map((column) => (
-                    <th key={column.key} className="px-4 py-2 text-left">
+                    <th key={column.key} className="px-3 py-2 text-left sm:px-4">
                       {column.label}
                     </th>
                   ))}
-                  <th className="px-4 py-2 text-left">Actions</th>
+                  <th className="px-3 py-2 text-left sm:px-4">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -352,13 +426,13 @@ export default function AdminCrudPage({
                       const renderedValue =
                         typeof value === "boolean" ? (value ? "Yes" : "No") : toStringValue(value);
                       return (
-                        <td key={column.key} className="px-4 py-2">
+                        <td key={column.key} className="px-3 py-2 align-top sm:px-4">
                           {renderedValue || "-"}
                         </td>
                       );
                     })}
-                    <td className="px-4 py-2">
-                      <div className="flex gap-2">
+                    <td className="px-3 py-2 sm:px-4">
+                      <div className="flex flex-wrap gap-2">
                         <button
                           type="button"
                           onClick={() => handleEdit(row)}
@@ -368,7 +442,7 @@ export default function AdminCrudPage({
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleDelete(row)}
+                          onClick={() => promptDelete(row)}
                           className="rounded border border-red-300 px-2 py-1 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
                         >
                           Delete

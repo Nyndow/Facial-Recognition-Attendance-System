@@ -3,6 +3,7 @@
 import { ReactNode, useEffect } from "react";
 import { useAuth } from "../hooks/useAuth";
 import { useRouter } from "next/navigation";
+import LoadingSpinner from "@/components/LoadingSpinner";
 
 interface Props {
   children: ReactNode;
@@ -45,9 +46,9 @@ export default function Protected({
     }
   }, [hasToken, loading, user, adminOnly, nonAdminOnly, router]);
 
-  if (!hasToken || loading || !user) return <p>Loading...</p>;
-  if (adminOnly && !user.isAdmin) return <p>Loading...</p>;
-  if (nonAdminOnly && user.isAdmin) return <p>Loading...</p>;
+  if (!hasToken || loading || !user) return <LoadingSpinner fullScreen />;
+  if (adminOnly && !user.isAdmin) return <LoadingSpinner fullScreen />;
+  if (nonAdminOnly && user.isAdmin) return <LoadingSpinner fullScreen />;
 
   return <>{children}</>;
 }

@@ -7,12 +7,9 @@ interface SessionInfoLayoutProps {
 
 export default function SessionInfoLayout({ children }: SessionInfoLayoutProps) {
   return (
-    <div className="flex min-h-screen">
-      {/* Sidebar */}
+    <div className="min-h-screen md:flex">
       <Sidebar />
-
-      {/* Main content */}
-      <main className="flex-1 bg-gray-50 dark:bg-gray-800 p-6 overflow-auto">
+      <main className="min-w-0 flex-1 bg-gray-50 p-4 pt-16 overflow-x-hidden dark:bg-gray-800 md:p-6 md:pt-6">
         {children}
       </main>
     </div>
