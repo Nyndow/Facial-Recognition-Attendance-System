@@ -67,10 +67,12 @@ function DashboardContent() {
           </section>
 
           <section>
+            <hr className="mb-4 border-gray-300 dark:border-gray-700" />
             <h2 className="mb-4 text-xl font-semibold sm:text-2xl">Other Sessions</h2>
             {otherSessions.length === 0 ? (
               <p>No other sessions scheduled.</p>
             ) : (
+              
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {otherSessions.map((session) => (
                   <div
