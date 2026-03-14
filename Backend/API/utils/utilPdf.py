@@ -25,6 +25,8 @@ def generate_attendance_pdf(session, students) -> BytesIO:
     elements.append(Paragraph(f"Teacher: {session.get('teacher_name', '')}", styles['Normal']))
     elements.append(Paragraph(f"Room: {session.get('room', '')}", styles['Normal']))
     elements.append(Paragraph(f"Time: {session.get('time', '')}", styles['Normal']))
+    if session.get("endSession"):
+        elements.append(Paragraph(f"End Time: {session.get('endSession', '')}", styles['Normal']))
     elements.append(Spacer(1, 12))
 
     # TABLE

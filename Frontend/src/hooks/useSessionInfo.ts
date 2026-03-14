@@ -8,6 +8,7 @@ export interface SessionInfo {
   room: string;
   subject: string;
   time: string | null;
+  endSession: string;
   teacher_name?: string;
   class_id?: number;
   class_name?: string;

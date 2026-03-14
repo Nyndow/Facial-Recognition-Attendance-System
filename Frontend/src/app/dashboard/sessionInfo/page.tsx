@@ -37,7 +37,10 @@ function SessionInfoContent() {
             <span className="font-medium">Teacher:</span> {session.teacher_name || "N/A"}
           </p>
           <p className="break-words">
-            <span className="font-medium">Time:</span> {session.time || "N/A"}
+            <span className="font-medium">Start Time:</span> {session.time || "N/A"}
+          </p>
+          <p className="break-words">
+            <span className="font-medium">End Time:</span> {session.endSession}
           </p>
           <button
             onClick={() => exportPDF(session, students)}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useMemo, useRef, useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
   Sun,
@@ -11,13 +11,24 @@ import {
   User,
   LogOut,
   Menu,
+  LayoutDashboard,
+  Users,
+  GraduationCap,
+  BookOpen,
+  Presentation,
+  DoorOpen,
+  Camera,
+  CalendarClock,
+  Shield,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useSessions } from "@/hooks/useSessions";
 
 export default function Sidebar() {
   const router = useRouter();
   const pathname = usePathname();
   const { user } = useAuth();
+  const { sessions } = useSessions();
 
   const [theme, setTheme] = useState<"light" | "dark">(() => {
     if (typeof window !== "undefined" && localStorage.getItem("theme") === "dark") {
@@ -28,6 +39,9 @@ export default function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [now, setNow] = useState(() => new Date());
+  const [cameraActive, setCameraActive] = useState(false);
+  const cameraStreamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
     if (theme === "dark") {
@@ -38,6 +52,44 @@ export default function Sidebar() {
       localStorage.setItem("theme", "light");
     }
   }, [theme]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setNow(new Date());
+    }, 30000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (cameraStreamRef.current) {
+        cameraStreamRef.current.getTracks().forEach((track) => track.stop());
+        cameraStreamRef.current = null;
+      }
+    };
+  }, []);
+
+  const activeSession = useMemo(() => {
+    if (user?.isAdmin) return null;
+    const nowTime = now.getTime();
+    return (
+      sessions.find((session) => {
+        const start = new Date(session.time).getTime();
+        const end = new Date(session.endSession).getTime();
+        return nowTime >= start && nowTime <= end;
+      }) ?? null
+    );
+  }, [now, sessions, user?.isAdmin]);
+
+  useEffect(() => {
+    if (!activeSession && cameraActive) {
+      if (cameraStreamRef.current) {
+        cameraStreamRef.current.getTracks().forEach((track) => track.stop());
+        cameraStreamRef.current = null;
+      }
+      setCameraActive(false);
+    }
+  }, [activeSession, cameraActive]);
 
   const toggleTheme = () => {
     setTheme((prev) => (prev === "light" ? "dark" : "light"));
@@ -60,18 +112,38 @@ export default function Sidebar() {
     router.replace("/login");
   };
 
+  const handleCameraToggle = async () => {
+    if (cameraActive) {
+      if (cameraStreamRef.current) {
+        cameraStreamRef.current.getTracks().forEach((track) => track.stop());
+        cameraStreamRef.current = null;
+      }
+      setCameraActive(false);
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      cameraStreamRef.current = stream;
+      setCameraActive(true);
+    } catch (err) {
+      console.error("Unable to access webcam.", err);
+      setCameraActive(false);
+    }
+  };
+
   const navItems = user?.isAdmin
     ? [
-        { href: "/dashboard/admin", label: "Admin Home", icon: "A" },
-        { href: "/dashboard/admin/users", label: "Users", icon: "U" },
-        { href: "/dashboard/admin/students", label: "Students", icon: "S" },
-        { href: "/dashboard/admin/classes", label: "Classes", icon: "C" },
-        { href: "/dashboard/admin/teachers", label: "Teachers", icon: "T" },
-        { href: "/dashboard/admin/rooms", label: "Rooms", icon: "R" },
-        { href: "/dashboard/admin/cameras", label: "Cameras", icon: "M" },
-        { href: "/dashboard/admin/sessions", label: "Sessions", icon: "X" },
+        { href: "/dashboard/admin", label: "Admin Home", icon: <Shield size={18} /> },
+        { href: "/dashboard/admin/users", label: "Users", icon: <Users size={18} /> },
+        { href: "/dashboard/admin/students", label: "Students", icon: <GraduationCap size={18} /> },
+        { href: "/dashboard/admin/classes", label: "Classes", icon: <BookOpen size={18} /> },
+        { href: "/dashboard/admin/teachers", label: "Teachers", icon: <Presentation size={18} /> },
+        { href: "/dashboard/admin/rooms", label: "Rooms", icon: <DoorOpen size={18} /> },
+        { href: "/dashboard/admin/cameras", label: "Cameras", icon: <Camera size={18} /> },
+        { href: "/dashboard/admin/sessions", label: "Sessions", icon: <CalendarClock size={18} /> },
       ]
-    : [{ href: "/dashboard", label: "Dashboard", icon: "D" }];
+    : [{ href: "/dashboard", label: "Dashboard", icon: <LayoutDashboard size={18} /> }];
 
   return (
     <>
@@ -140,20 +212,36 @@ export default function Sidebar() {
                     : "text-gray-700 hover:bg-gray-200 dark:text-gray-200 dark:hover:bg-gray-700"
                 }`}
               >
-                <span className="font-bold">{item.icon}</span>
+                <span className="shrink-0">{item.icon}</span>
                 {!collapsed && <span className="ml-3 truncate">{item.label}</span>}
               </div>
             );
           })}
+          {!user?.isAdmin && activeSession && (
+            <div className="mb-4">
+              <hr className="mb-4 border-gray-300 dark:border-gray-700" />
+              <button
+                type="button"
+                onClick={handleCameraToggle}
+                className={`w-full rounded px-3 py-2 text-sm font-medium transition ${
+                  cameraActive
+                    ? "bg-red-600 text-white hover:bg-red-700"
+                    : "bg-green-600 text-white hover:bg-green-700"
+                }`}
+              >
+                {cameraActive ? "Stop Camera" : "Activate Camera"}
+              </button>
+            </div>
+          )}
         </nav>
 
         <div className="relative mt-auto">
           <button
             onClick={() => setUserMenuOpen((prev) => !prev)}
-            className="w-full rounded p-2 text-gray-700 transition hover:bg-gray-200 dark:text-gray-200 dark:hover:bg-gray-700 flex items-center"
+            className="w-full rounded p-2 text-gray-700 transition hover:bg-gray-200 dark:text-gray-200 dark:hover:bg-gray-700 flex items-center justify-center gap-3"
           >
             <UserCircle2 size={20} />
-            {!collapsed && <span className="ml-3 font-medium">Account</span>}
+            {!collapsed && <span className="font-medium">Account</span>}
           </button>
 
           {userMenuOpen && (

@@ -91,6 +91,7 @@ def sessions_by_class():
         "room": s.room_ref.nameRoom if s.room_ref else None,
         "subject": s.subject,
         "time": s.time.strftime("%Y-%m-%d %H:%M"),
+        "endSession": s.endSession.strftime("%Y-%m-%d %H:%M") if s.endSession else None,
         "teacher_id": s.teacher_id,
         "class_id": s.class_id
     } for s in sessions]

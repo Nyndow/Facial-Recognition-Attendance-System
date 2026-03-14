@@ -92,14 +92,16 @@ export default function AdminSessionsPage() {
         columns={[
           { key: "id", label: "ID" },
           { key: "subject", label: "Subject" },
-          { key: "time", label: "Time" },
+          { key: "time", label: "Start Time" },
+          { key: "endSession", label: "End Time" },
           { key: "idRoom", label: "Room ID" },
           { key: "teacher_id", label: "Teacher ID" },
           { key: "class_id", label: "Class ID" },
         ]}
         fields={[
           { key: "subject", label: "Subject", type: "text", required: true },
-          { key: "time", label: "Time", type: "datetime-local" },
+          { key: "time", label: "Start Time", type: "datetime-local" },
+          { key: "endSession", label: "End Time", type: "datetime-local", required: true },
           {
             key: "idRoom",
             label: "Room",

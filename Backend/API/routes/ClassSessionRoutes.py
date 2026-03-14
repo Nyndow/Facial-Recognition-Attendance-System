@@ -18,6 +18,7 @@ def _serialize_session(session, class_name=None, teacher_name=None):
         "room": room_name,  # backward-compatible response field
         "subject": session.subject,
         "time": session.time.isoformat() if session.time else None,
+        "endSession": session.endSession.isoformat() if session.endSession else None,
         "teacher_id": session.teacher_id,
         "teacher_name": teacher_name,
         "class_id": session.class_id,
@@ -56,6 +57,13 @@ def add_class_session():
     if time_str:
         time_obj = datetime.fromisoformat(time_str.replace("Z", "+00:00"))
 
+    end_time_str = data.get("endSession")
+    end_time_obj = None
+    if end_time_str:
+        end_time_obj = datetime.fromisoformat(end_time_str.replace("Z", "+00:00"))
+    else:
+        return jsonify({"error": "endSession is required"}), 400
+
     room_id = data.get("idRoom")
     if room_id is None and data.get("room"):
         room = Room.query.filter_by(nameRoom=data["room"]).first()
@@ -72,6 +80,7 @@ def add_class_session():
         idRoom=room_id,
         subject=data["subject"],
         time=time_obj,
+        endSession=end_time_obj,
         teacher_id=data["teacher_id"],
         class_id=data["class_id"]
     )
@@ -107,6 +116,13 @@ def update_class_session(session_id):
     time_str = data.get("time")
     if time_str:
         s.time = datetime.fromisoformat(time_str.replace("Z", "+00:00"))
+
+    if "endSession" in data:
+        end_time_str = data.get("endSession")
+        if end_time_str:
+            s.endSession = datetime.fromisoformat(end_time_str.replace("Z", "+00:00"))
+        else:
+            return jsonify({"error": "endSession cannot be empty"}), 400
 
     s.teacher_id = data.get("teacher_id", s.teacher_id)
     s.class_id = data.get("class_id", s.class_id)
@@ -191,6 +207,7 @@ def get_session_by_session_id(session_id):
 
     result = _serialize_session(session, class_name=class_name, teacher_name=teacher_name)
     result["time"] = session.time.strftime("%Y-%m-%d %H:%M") if session.time else None
+    result["endSession"] = session.endSession.strftime("%Y-%m-%d %H:%M") if session.endSession else None
 
     return jsonify(result)
 

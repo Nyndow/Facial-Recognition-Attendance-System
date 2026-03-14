@@ -176,7 +176,6 @@ def recognize_multiple_faces(image_b64: str, session_id: int):
 
     return results
 
-
 # =============================
 # Update student face
 # =============================
@@ -228,3 +227,73 @@ def mark_attendance(student_id: int, session_id: int):
         "session": session.id,
         "timestamp": datetime.utcnow().isoformat()
     }
+
+# =============================
+# WEBCAM LIVE RECOGNITION
+# =============================
+def recognize_from_webcam(session_id: int):
+    cap = cv2.VideoCapture(0)
+
+    if not cap.isOpened():
+        print("Cannot open webcam")
+        return
+
+    session = ClassSession.query.get(session_id)
+    if not session:
+        print("Session not found")
+        return
+
+    students = Student.query.filter_by(class_id=session.class_id).all()
+
+    if not students:
+        print("No students found")
+        return
+
+    db_embeddings = np.array([s.face_emb for s in students])
+
+    print("Starting webcam recognition... Press 'q' to quit")
+
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            print("Failed to grab frame")
+            break
+
+        faces = _face_app.get(frame)
+
+        for face in faces:
+            emb = face.embedding.astype(float)
+
+            similarities = cosine_similarity([emb], db_embeddings)[0]
+            best_idx = int(np.argmax(similarities))
+            best_score = float(similarities[best_idx])
+
+            x1, y1, x2, y2 = face.bbox.astype(int)
+
+            if best_score >= SIMILARITY_THRESHOLD:
+                student = students[best_idx]
+                name = f"{student.name} ({round(best_score,2)})"
+            else:
+                name = "Unknown"
+
+            # draw box
+            cv2.rectangle(frame, (x1,y1), (x2,y2), (0,255,0), 2)
+
+            # draw name
+            cv2.putText(
+                frame,
+                name,
+                (x1, y1 - 10),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.8,
+                (0,255,0),
+                2
+            )
+
+        cv2.imshow("Face Recognition", frame)
+
+        if cv2.waitKey(1) & 0xFF == ord("q"):
+            break
+
+    cap.release()
+    cv2.destroyAllWindows()
