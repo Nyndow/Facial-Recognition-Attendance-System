@@ -1,9 +1,22 @@
 from flask import Blueprint, request, jsonify
 from config.database import db
 from models.User import User
+from models.Class import Class
+from models.Teacher import Teacher
 from utils.utilToken import token_required, admin_required
 
 users_bp = Blueprint("users", __name__)
+
+def _resolve_user_names(user):
+    class_name = None
+    if user.idClass:
+        class_obj = Class.query.get(user.idClass)
+        class_name = class_obj.name if class_obj else None
+    teacher_name = None
+    if user.idTeacher:
+        teacher_obj = Teacher.query.get(user.idTeacher)
+        teacher_name = teacher_obj.name if teacher_obj else None
+    return class_name, teacher_name
 
 # -------------------------
 # GET ALL USERS
@@ -13,13 +26,19 @@ users_bp = Blueprint("users", __name__)
 @admin_required
 def get_users():
     users = User.query.all()
-    return jsonify([{
-        "id": u.id,
-        "username": u.username,
-        "isAdmin": u.isAdmin,
-        "idClass": u.idClass,
-        "idTeacher": u.idTeacher
-    } for u in users]), 200
+    result = []
+    for u in users:
+        class_name, teacher_name = _resolve_user_names(u)
+        result.append({
+            "id": u.id,
+            "username": u.username,
+            "isAdmin": u.isAdmin,
+            "idClass": u.idClass,
+            "idTeacher": u.idTeacher,
+            "class_name": class_name,
+            "teacher_name": teacher_name
+        })
+    return jsonify(result), 200
 
 
 # -------------------------
@@ -64,12 +83,15 @@ def create_user():
 @admin_required
 def get_user(user_id):
     user = User.query.get_or_404(user_id)
+    class_name, teacher_name = _resolve_user_names(user)
     return jsonify({
         "id": user.id,
         "username": user.username,
         "isAdmin": user.isAdmin,
         "idClass": user.idClass,
-        "idTeacher": user.idTeacher
+        "idTeacher": user.idTeacher,
+        "class_name": class_name,
+        "teacher_name": teacher_name
     }), 200
 
 

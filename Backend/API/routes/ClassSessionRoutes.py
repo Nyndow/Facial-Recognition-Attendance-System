@@ -31,6 +31,17 @@ def _serialize_session(session, class_name=None, teacher_name=None):
         "class_name": class_name
     }
 
+def _resolve_session_names(session):
+    class_name = None
+    if session.class_id:
+        class_obj = Class.query.get(session.class_id)
+        class_name = class_obj.name if class_obj else None
+    teacher_name = None
+    if session.teacher_id:
+        from models.Teacher import Teacher
+        teacher_obj = Teacher.query.get(session.teacher_id)
+        teacher_name = teacher_obj.name if teacher_obj else None
+    return class_name, teacher_name
 
 # Get all class sessions
 @class_session_bp.route("/class_sessions", methods=["GET"])
@@ -38,7 +49,11 @@ def _serialize_session(session, class_name=None, teacher_name=None):
 @admin_required
 def get_class_sessions():
     sessions = ClassSession.query.all()
-    return jsonify([_serialize_session(s) for s in sessions])
+    result = []
+    for s in sessions:
+        class_name, teacher_name = _resolve_session_names(s)
+        result.append(_serialize_session(s, class_name=class_name, teacher_name=teacher_name))
+    return jsonify(result)
 
 
 # Get a single class session by ID
@@ -47,7 +62,8 @@ def get_class_sessions():
 @admin_required
 def get_class_session(session_id):
     s = ClassSession.query.get_or_404(session_id)
-    return jsonify(_serialize_session(s))
+    class_name, teacher_name = _resolve_session_names(s)
+    return jsonify(_serialize_session(s, class_name=class_name, teacher_name=teacher_name))
 
 
 # Create a new class session
@@ -175,16 +191,8 @@ def get_sessions():
 
     # Build result
     result = []
-    from models.Teacher import Teacher
     for s in sessions:
-        class_name = None
-        if s.class_id:
-            class_obj = Class.query.get(s.class_id)
-            class_name = class_obj.name if class_obj else None
-        teacher_name = None
-        if s.teacher_id:
-            teacher_obj = Teacher.query.get(s.teacher_id)
-            teacher_name = teacher_obj.name if teacher_obj else None
+        class_name, teacher_name = _resolve_session_names(s)
         result.append(_serialize_session(s, class_name=class_name, teacher_name=teacher_name))
 
     return jsonify(result)
@@ -199,17 +207,7 @@ def get_session_by_session_id(session_id):
 
     from models.Teacher import Teacher
 
-    # Resolve class name
-    class_name = None
-    if session.class_id:
-        class_obj = Class.query.get(session.class_id)
-        class_name = class_obj.name if class_obj else None
-
-    # Resolve teacher name
-    teacher_name = None
-    if session.teacher_id:
-        teacher_obj = Teacher.query.get(session.teacher_id)
-        teacher_name = teacher_obj.name if teacher_obj else None
+    class_name, teacher_name = _resolve_session_names(session)
 
     result = _serialize_session(session, class_name=class_name, teacher_name=teacher_name)
     result["time"] = session.time.strftime("%Y-%m-%d %H:%M") if session.time else None

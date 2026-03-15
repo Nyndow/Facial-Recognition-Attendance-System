@@ -18,6 +18,8 @@ import {
   Presentation,
   DoorOpen,
   Camera,
+  Video,
+  VideoOff,
   CalendarClock,
   Shield,
 } from "lucide-react";
@@ -203,12 +205,22 @@ export default function Sidebar() {
               <button
                 type="button"
                 onClick={toggleCamera}
-                className={`w-full rounded px-3 py-2 text-sm font-medium transition ${cameraStatus === 1
+                aria-label={cameraStatus === 1 ? "Stop Camera" : "Activate Camera"}
+                title={cameraStatus === 1 ? "Stop Camera" : "Activate Camera"}
+                className={`rounded font-medium transition ${collapsed
+                    ? "mx-auto flex h-10 w-10 items-center justify-center"
+                    : "w-full px-3 py-2 text-sm"
+                  } ${cameraStatus === 1
                     ? "bg-red-600 text-white hover:bg-red-700"
                     : "bg-green-600 text-white hover:bg-green-700"
                   }`}
               >
-                {cameraStatus === 1 ? "Stop Camera" : "Activate Camera"}
+                <span className={`flex items-center justify-center ${collapsed ? "" : "gap-2"}`}>
+                  {cameraStatus === 1 ? <VideoOff size={18} /> : <Video size={18} />}
+                  {!collapsed && (
+                    <span>{cameraStatus === 1 ? "Stop Camera" : "Activate Camera"}</span>
+                  )}
+                </span>
               </button>
             </div>
           )}

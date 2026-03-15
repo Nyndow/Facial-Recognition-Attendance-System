@@ -10,7 +10,6 @@ export default function AdminTeachersPage() {
         title="Teachers"
         endpoint="/teachers"
         columns={[
-          { key: "id", label: "ID" },
           { key: "name", label: "Name" },
         ]}
         fields={[{ key: "name", label: "Name", type: "text", required: true }]}

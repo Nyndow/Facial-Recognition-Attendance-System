@@ -1,61 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { AxiosError } from "axios";
+import { useMemo } from "react";
 import Protected from "@/components/Protected";
 import AdminCrudPage from "@/components/AdminCrudPage";
-import api from "@/lib/api";
-
-interface RoomOption {
-  idRoom: number;
-  nameRoom: string;
-}
-
-interface TeacherOption {
-  id: number;
-  name: string;
-}
-
-interface ClassOption {
-  id: number;
-  name: string;
-}
+import { useRooms } from "@/hooks/useRooms";
+import { useTeachers } from "@/hooks/useTeachers";
+import { useClasses } from "@/hooks/useClasses";
 
 export default function AdminSessionsPage() {
-  const [rooms, setRooms] = useState<RoomOption[]>([]);
-  const [teachers, setTeachers] = useState<TeacherOption[]>([]);
-  const [classes, setClasses] = useState<ClassOption[]>([]);
-
-  const loadOptions = useCallback(async () => {
-    try {
-      const [roomsRes, teachersRes, classesRes] = await Promise.all([
-        api.get("/rooms"),
-        api.get("/teachers"),
-        api.get("/classes"),
-      ]);
-
-      setRooms(Array.isArray(roomsRes.data) ? (roomsRes.data as RoomOption[]) : []);
-      setTeachers(Array.isArray(teachersRes.data) ? (teachersRes.data as TeacherOption[]) : []);
-      setClasses(Array.isArray(classesRes.data) ? (classesRes.data as ClassOption[]) : []);
-    } catch (err: unknown) {
-      const axiosError = err as AxiosError<{ error?: string; message?: string }>;
-      const msg =
-        axiosError.response?.data?.error ||
-        axiosError.response?.data?.message ||
-        "Failed to load session options";
-      console.error(msg);
-      setRooms([]);
-      setTeachers([]);
-      setClasses([]);
-    }
-  }, []);
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      void loadOptions();
-    }, 0);
-    return () => window.clearTimeout(timer);
-  }, [loadOptions]);
+  const { rooms } = useRooms();
+  const { teachers } = useTeachers();
+  const { classes } = useClasses();
 
   const roomOptions = useMemo(
     () =>
@@ -90,13 +45,13 @@ export default function AdminSessionsPage() {
         title="Class Sessions"
         endpoint="/class_sessions"
         columns={[
-          { key: "id", label: "ID" },
           { key: "subject", label: "Subject" },
           { key: "time", label: "Start Time" },
           { key: "endSession", label: "End Time" },
-          { key: "idRoom", label: "Room ID" },
-          { key: "teacher_id", label: "Teacher ID" },
-          { key: "class_id", label: "Class ID" },
+          { key: "nameRoom", label: "Room" },
+          { key: "nameCamera", label: "Camera" },
+          { key: "teacher_name", label: "Teacher" },
+          { key: "class_name", label: "Class" },
         ]}
         fields={[
           { key: "subject", label: "Subject", type: "text", required: true },

@@ -1,25 +1,14 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AxiosError } from "axios";
 import Image from "next/image";
 import { X } from "lucide-react";
 import Protected from "@/components/Protected";
-import api from "@/lib/api";
 import ToastStack, { ToastItem, ToastType } from "@/components/ToastStack";
 import LoadingSpinner from "@/components/LoadingSpinner";
-
-interface StudentRow {
-  id: number;
-  name: string;
-  matricule: string;
-  class_id: number | null;
-}
-
-interface ClassOption {
-  id: number;
-  name: string;
-}
+import { useStudents, StudentPayload, StudentRow } from "@/hooks/useStudents";
+import { useClasses } from "@/hooks/useClasses";
 
 interface StudentForm {
   name: string;
@@ -34,10 +23,17 @@ const initialForm: StudentForm = {
 };
 
 export default function AdminStudentsPage() {
-  const [students, setStudents] = useState<StudentRow[]>([]);
-  const [classes, setClasses] = useState<ClassOption[]>([]);
+  const {
+    students,
+    loading,
+    error: studentsError,
+    fetchStudents,
+    createStudent,
+    updateStudent,
+    deleteStudent,
+  } = useStudents();
+  const { classes, error: classesError } = useClasses();
   const [form, setForm] = useState<StudentForm>(initialForm);
-  const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -86,35 +82,31 @@ export default function AdminStudentsPage() {
     return apiError;
   };
 
-  const loadStudents = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await api.get("/students");
-      const rows = Array.isArray(res.data) ? (res.data as StudentRow[]) : [];
-      setStudents(rows);
-    } catch (err: unknown) {
+  useEffect(() => {
+    fetchStudents().catch((err: unknown) => {
       showToast("error", parseError(err));
-      setStudents([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [showToast]);
-
-  const loadClasses = useCallback(async () => {
-    try {
-      const res = await api.get("/classes");
-      const rows = Array.isArray(res.data) ? (res.data as ClassOption[]) : [];
-      setClasses(rows);
-    } catch (err: unknown) {
-      showToast("error", parseError(err));
-      setClasses([]);
-    }
-  }, [showToast]);
+    });
+  }, [fetchStudents, showToast]);
 
   useEffect(() => {
-    loadStudents();
-    loadClasses();
-  }, [loadStudents, loadClasses]);
+    if (studentsError) {
+      showToast("error", studentsError);
+    }
+  }, [studentsError, showToast]);
+
+  useEffect(() => {
+    if (classesError) {
+      showToast("error", classesError);
+    }
+  }, [classesError, showToast]);
+
+  const classNameById = useMemo(() => {
+    const map = new Map<number, string>();
+    classes.forEach((classItem) => {
+      map.set(classItem.id, classItem.name);
+    });
+    return map;
+  }, [classes]);
 
   const stopCamera = useCallback(() => {
     if (streamRef.current) {
@@ -198,12 +190,7 @@ export default function AdminStudentsPage() {
     setSubmitting(true);
 
     const classId = form.class_id.trim() ? Number(form.class_id.trim()) : null;
-    const payload: {
-      name: string;
-      matricule: string;
-      class_id: number | null;
-      image?: string;
-    } = {
+    const payload: StudentPayload = {
       name: form.name.trim(),
       matricule: form.matricule.trim(),
       class_id: classId,
@@ -221,15 +208,15 @@ export default function AdminStudentsPage() {
 
     try {
       if (editingId === null) {
-        await api.post("/students", payload);
+        await createStudent(payload);
         showToast("success", "Student created successfully.");
         setCreateModalOpen(false);
       } else {
-        await api.put(`/students/${editingId}`, payload);
+        await updateStudent(editingId, payload);
         showToast("success", "Student updated successfully.");
       }
       resetForm();
-      await loadStudents();
+      await fetchStudents();
     } catch (err: unknown) {
       showToast("error", parseError(err));
     } finally {
@@ -244,10 +231,10 @@ export default function AdminStudentsPage() {
   const confirmDelete = async () => {
     if (!pendingDeleteStudent) return;
     try {
-      await api.delete(`/students/${pendingDeleteStudent.id}`);
+      await deleteStudent(pendingDeleteStudent.id);
       showToast("success", "Student deleted successfully.");
       if (editingId === pendingDeleteStudent.id) resetForm();
-      await loadStudents();
+      await fetchStudents();
       setPendingDeleteStudent(null);
     } catch (err: unknown) {
       showToast("error", parseError(err));
@@ -467,20 +454,20 @@ export default function AdminStudentsPage() {
               <table className="min-w-full overflow-hidden rounded-lg border text-sm sm:text-base">
                 <thead className="bg-gray-100 dark:bg-gray-700">
                   <tr>
-                    <th className="px-3 py-2 text-left sm:px-4">ID</th>
                     <th className="px-3 py-2 text-left sm:px-4">Name</th>
                     <th className="px-3 py-2 text-left sm:px-4">Matricule</th>
-                    <th className="px-3 py-2 text-left sm:px-4">Class ID</th>
+                    <th className="px-3 py-2 text-left sm:px-4">Class</th>
                     <th className="px-3 py-2 text-left sm:px-4">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {students.map((student) => (
                     <tr key={student.id} className="border-b">
-                      <td className="px-3 py-2 sm:px-4">{student.id}</td>
                       <td className="px-3 py-2 sm:px-4">{student.name}</td>
                       <td className="px-3 py-2 sm:px-4">{student.matricule}</td>
-                      <td className="px-3 py-2 sm:px-4">{student.class_id ?? "-"}</td>
+                      <td className="px-3 py-2 sm:px-4">
+                        {student.class_id ? classNameById.get(student.class_id) ?? "-" : "-"}
+                      </td>
                       <td className="px-3 py-2 sm:px-4">
                         <div className="flex flex-wrap gap-2">
                           <button

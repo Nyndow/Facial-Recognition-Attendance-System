@@ -10,7 +10,6 @@ export default function AdminClassesPage() {
         title="Classes"
         endpoint="/classes"
         columns={[
-          { key: "id", label: "ID" },
           { key: "name", label: "Name" },
         ]}
         fields={[{ key: "name", label: "Name", type: "text", required: true }]}

@@ -11,7 +11,6 @@ export default function AdminCamerasPage() {
         endpoint="/cameras"
         idKey="idCamera"
         columns={[
-          { key: "idCamera", label: "ID" },
           { key: "nameCamera", label: "Camera Name" },
           { key: "urlCamera", label: "URL" },
         ]}

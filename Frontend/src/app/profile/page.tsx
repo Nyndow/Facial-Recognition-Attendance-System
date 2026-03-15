@@ -79,16 +79,6 @@ export default function ProfilePage() {
             <p>
               <span className="font-semibold">Role:</span> {user.isAdmin ? "Admin" : "User"}
             </p>
-            {user.idClass && (
-              <p>
-                <span className="font-semibold">Class ID:</span> {user.idClass}
-              </p>
-            )}
-            {user.idTeacher && (
-              <p>
-                <span className="font-semibold">Teacher ID:</span> {user.idTeacher}
-              </p>
-            )}
           </div>
         </div>
       </div>
