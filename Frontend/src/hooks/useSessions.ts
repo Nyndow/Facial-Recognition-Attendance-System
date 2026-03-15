@@ -5,6 +5,8 @@ export interface Session {
   id: number;
   idRoom?: number;
   nameRoom?: string;
+  idCamera?: number | null;
+  nameCamera?: string | null;
   room: string;
   subject: string;
   time: string; // ISO string

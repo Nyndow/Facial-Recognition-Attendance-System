@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState, useEffect } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
   Sun,
@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useSessions } from "@/hooks/useSessions";
+import { useCameraStatus } from "@/hooks/useCameraStatus";
 
 export default function Sidebar() {
   const router = useRouter();
@@ -30,18 +31,35 @@ export default function Sidebar() {
   const { user } = useAuth();
   const { sessions } = useSessions();
 
-  const [theme, setTheme] = useState<"light" | "dark">(() => {
-    if (typeof window !== "undefined" && localStorage.getItem("theme") === "dark") {
-      return "dark";
-    }
-    return "light";
-  });
+  const [theme, setTheme] = useState<"light" | "dark">("light");
   const [collapsed, setCollapsed] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [now, setNow] = useState(() => new Date());
-  const [cameraActive, setCameraActive] = useState(false);
-  const cameraStreamRef = useRef<MediaStream | null>(null);
+
+  const activeSession = useMemo(() => {
+    if (user?.isAdmin) return null;
+    const nowTime = now.getTime();
+    return (
+      sessions.find((session) => {
+        const start = new Date(session.time).getTime();
+        const end = new Date(session.endSession).getTime();
+        return nowTime >= start && nowTime <= end;
+      }) ?? null
+    );
+  }, [now, sessions, user?.isAdmin]);
+
+  const { cameraStatus, toggleCamera } = useCameraStatus(activeSession?.idCamera, {
+    refreshKey: activeSession?.id,
+  });
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const storedTheme = localStorage.getItem("theme");
+    if (storedTheme === "dark" || storedTheme === "light") {
+      setTheme(storedTheme);
+    }
+  }, []);
 
   useEffect(() => {
     if (theme === "dark") {
@@ -61,15 +79,6 @@ export default function Sidebar() {
   }, []);
 
   useEffect(() => {
-    return () => {
-      if (cameraStreamRef.current) {
-        cameraStreamRef.current.getTracks().forEach((track) => track.stop());
-        cameraStreamRef.current = null;
-      }
-    };
-  }, []);
-
-  useEffect(() => {
     const handleDocumentClick = () => {
       if (userMenuOpen) {
         setUserMenuOpen(false);
@@ -79,28 +88,6 @@ export default function Sidebar() {
     document.addEventListener("click", handleDocumentClick);
     return () => document.removeEventListener("click", handleDocumentClick);
   }, [userMenuOpen]);
-
-  const activeSession = useMemo(() => {
-    if (user?.isAdmin) return null;
-    const nowTime = now.getTime();
-    return (
-      sessions.find((session) => {
-        const start = new Date(session.time).getTime();
-        const end = new Date(session.endSession).getTime();
-        return nowTime >= start && nowTime <= end;
-      }) ?? null
-    );
-  }, [now, sessions, user?.isAdmin]);
-
-  useEffect(() => {
-    if (!activeSession && cameraActive) {
-      if (cameraStreamRef.current) {
-        cameraStreamRef.current.getTracks().forEach((track) => track.stop());
-        cameraStreamRef.current = null;
-      }
-      setCameraActive(false);
-    }
-  }, [activeSession, cameraActive]);
 
   const toggleTheme = () => {
     setTheme((prev) => (prev === "light" ? "dark" : "light"));
@@ -121,26 +108,6 @@ export default function Sidebar() {
     localStorage.removeItem("token");
     setUserMenuOpen(false);
     router.replace("/login");
-  };
-
-  const handleCameraToggle = async () => {
-    if (cameraActive) {
-      if (cameraStreamRef.current) {
-        cameraStreamRef.current.getTracks().forEach((track) => track.stop());
-        cameraStreamRef.current = null;
-      }
-      setCameraActive(false);
-      return;
-    }
-
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      cameraStreamRef.current = stream;
-      setCameraActive(true);
-    } catch (err) {
-      console.error("Unable to access webcam.", err);
-      setCameraActive(false);
-    }
   };
 
   const navItems = user?.isAdmin
@@ -230,18 +197,18 @@ export default function Sidebar() {
           })}
 
 
-          {!user?.isAdmin && activeSession && (
+          {!user?.isAdmin && activeSession?.idCamera && (
             <div className="mb-4">
               <hr className="mb-4 border-gray-300 dark:border-gray-700" />
               <button
                 type="button"
-                onClick={handleCameraToggle}
-                className={`w-full rounded px-3 py-2 text-sm font-medium transition ${cameraActive
+                onClick={toggleCamera}
+                className={`w-full rounded px-3 py-2 text-sm font-medium transition ${cameraStatus === 1
                     ? "bg-red-600 text-white hover:bg-red-700"
                     : "bg-green-600 text-white hover:bg-green-700"
                   }`}
               >
-                {cameraActive ? "Stop Camera" : "Activate Camera"}
+                {cameraStatus === 1 ? "Stop Camera" : "Activate Camera"}
               </button>
             </div>
           )}

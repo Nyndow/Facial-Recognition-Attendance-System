@@ -11,11 +11,17 @@ class_session_bp = Blueprint("class_sessions", __name__)
 
 def _serialize_session(session, class_name=None, teacher_name=None):
     room_name = session.room_ref.nameRoom if session.room_ref else None
+    camera_id = session.room_ref.idCamera if session.room_ref else None
+    camera_name = None
+    if session.room_ref and session.room_ref.camera_ref:
+        camera_name = session.room_ref.camera_ref.nameCamera
     return {
         "id": session.id,
         "idRoom": session.idRoom,
         "nameRoom": room_name,
         "room": room_name,  # backward-compatible response field
+        "idCamera": camera_id,
+        "nameCamera": camera_name,
         "subject": session.subject,
         "time": session.time.isoformat() if session.time else None,
         "endSession": session.endSession.isoformat() if session.endSession else None,
