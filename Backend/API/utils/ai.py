@@ -1,224 +1,277 @@
+import os
 import base64
-import cv2
 import numpy as np
-from ultralytics import YOLO
-from pathlib import Path
+import cv2
+import tensorflow as tf
+from tensorflow.keras import layers, Model
+from sklearn.metrics.pairwise import cosine_similarity
 from insightface.app import FaceAnalysis
 
+# ===============================
+# Configuration
+# ===============================
+IMAGE_SIZE = 416
+GRID_SIZE = 13
+NUM_CLASSES = 1
+DETECTION_THRESHOLD = 0.5
+SIMILARITY_THRESHOLD = 0.5
+
+# ===============================
+# Exact architecture from training
+# ===============================
+def conv_block(x, filters, kernel=3, stride=1):
+    x = layers.Conv2D(filters, kernel, stride, padding="same", use_bias=False)(x)
+    x = layers.BatchNormalization()(x)
+    x = layers.LeakyReLU(0.1)(x)
+    return x
+
+
+def build_tiny_yolo(input_shape=(IMAGE_SIZE, IMAGE_SIZE, 3)):
+    inputs = layers.Input(shape=input_shape)
+    x = conv_block(inputs, 16)
+    x = layers.MaxPooling2D(2)(x)
+    x = conv_block(x, 32)
+    x = layers.MaxPooling2D(2)(x)
+    x = conv_block(x, 64)
+    x = layers.MaxPooling2D(2)(x)
+    x = conv_block(x, 128)
+    x = layers.MaxPooling2D(2)(x)
+    x = conv_block(x, 256)
+    x = layers.MaxPooling2D(2)(x)
+    x = conv_block(x, 512)
+    output = layers.Conv2D(5 + NUM_CLASSES, 1, padding="same")(x)
+    return Model(inputs, output)
+
+
+# ===============================
+# Custom YOLO loss (must match training — required to load weights)
+# ===============================
+def yolo_loss(y_true, y_pred):
+    obj_mask = y_true[..., 4:5]
+    box_loss = tf.reduce_sum(
+        obj_mask * tf.square(y_true[..., 0:4] - y_pred[..., 0:4])
+    )
+    obj_loss = tf.reduce_sum(
+        tf.square(y_true[..., 4:5] - y_pred[..., 4:5])
+    )
+    class_loss = tf.reduce_sum(
+        obj_mask * tf.square(y_true[..., 5:] - y_pred[..., 5:])
+    )
+    return box_loss + obj_loss + class_loss
+
+
+# ===============================
+# Decode predictions (identical to training code)
+# ===============================
+def decode_predictions(pred, threshold=DETECTION_THRESHOLD):
+    """
+    pred shape: (GRID_SIZE, GRID_SIZE, 5 + NUM_CLASSES)
+    Returns list of [x, y, w, h] boxes (normalised 0-1) above confidence threshold.
+    """
+    boxes = []
+    for y in range(GRID_SIZE):
+        for x in range(GRID_SIZE):
+            cell = pred[y, x]
+            if cell[4] > threshold:
+                boxes.append(cell[0:4].tolist())
+    return boxes
+
+
+# ===============================
+# Lazy-loaded singletons
+# ===============================
+_yolo_model = None
 _arcface_app = None
-_yolo_face_model = None
-
-# =============================
-# YOLO (best.pt) LIVE FACE DETECTION
-# =============================
-def detect(conf_threshold: float = 0.5, camera_index: int = 0):
-
-    model_path = Path(__file__).resolve().parents[2] / "AI" / "best.pt"
-    if not model_path.exists():
-        raise FileNotFoundError(f"Model not found: {model_path}")
-
-    model = YOLO(str(model_path))
-    cap = cv2.VideoCapture(camera_index)
-
-    if not cap.isOpened():
-        raise RuntimeError("Cannot open webcam")
-
-    print("Starting YOLO webcam detection... Press 'q' to quit")
-
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            print("Failed to grab frame")
-            break
-
-        results = model.predict(frame, conf=conf_threshold, verbose=False)
-        if results:
-            boxes = results[0].boxes
-            if boxes is not None and len(boxes) > 0:
-                for box in boxes:
-                    x1, y1, x2, y2 = box.xyxy[0].tolist()
-                    conf = float(box.conf[0]) if hasattr(box, "conf") else 0.0
-
-                    x1, y1, x2, y2 = map(int, [x1, y1, x2, y2])
-                    label = f"Face {conf:.2f}"
-
-                    cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                    cv2.putText(
-                        frame,
-                        label,
-                        (x1, max(0, y1 - 10)),
-                        cv2.FONT_HERSHEY_SIMPLEX,
-                        0.7,
-                        (0, 255, 0),
-                        2,
-                    )
-
-        cv2.imshow("YOLO Face Detection", frame)
-
-        if cv2.waitKey(1) & 0xFF == ord("q"):
-            break
-
-    cap.release()
-    cv2.destroyAllWindows()
 
 
-# =============================
-# ArcFace (InsightFace) Face Recognition
-# =============================
-def _get_arcface_app():
+def _get_yolo_model(weights_path: str) -> Model:
+    """
+    Rebuild Tiny YOLO with the exact same architecture + loss used during training,
+    then load weights from best.pt.  Cached after first call.
+    """
+    global _yolo_model
+    if _yolo_model is None:
+        if not os.path.exists(weights_path):
+            raise FileNotFoundError(f"YOLO weights not found at: {weights_path}")
+
+        model = build_tiny_yolo()
+        # compile with the same loss so Keras recognises the custom object
+        model.compile(
+            optimizer=tf.keras.optimizers.Adam(1e-4),
+            loss=yolo_loss,
+        )
+        model.load_weights(weights_path)
+        _yolo_model = model
+    return _yolo_model
+
+
+def _get_arcface_app() -> FaceAnalysis:
+    """Load (or return cached) InsightFace ArcFace app."""
     global _arcface_app
-    if _arcface_app is not None:
-        return _arcface_app
-
-    app = FaceAnalysis(name="buffalo_l")
-    # ctx_id = -1 forces CPU; change to 0 if GPU is available
-    app.prepare(ctx_id=-1, det_size=(640, 640))
-    _arcface_app = app
+    if _arcface_app is None:
+        app = FaceAnalysis(
+            name="buffalo_l",   # ArcFace R100 — swap to "buffalo_s" for lighter/faster
+            providers=["CPUExecutionProvider"],
+        )
+        app.prepare(ctx_id=0, det_size=(640, 640))
+        _arcface_app = app
     return _arcface_app
 
 
-def _get_yolo_face_model():
-    global _yolo_face_model
-    if _yolo_face_model is not None:
-        return _yolo_face_model
+# ===============================
+# Crop helper
+# ===============================
+def _box_to_crop(image: np.ndarray, box: list, padding: float = 0.10):
+    """
+    Convert a normalised [x_centre, y_centre, w, h] box to a pixel crop.
+    Adds padding around the face. Returns the cropped BGR array or None.
+    """
+    h_img, w_img = image.shape[:2]
+    x_c, y_c, w_n, h_n = box
 
-    model_path = Path(__file__).resolve().parents[2] / "AI" / "best.pt"
-    if not model_path.exists():
-        raise FileNotFoundError(f"Model not found: {model_path}")
+    x1 = int((x_c - w_n / 2 - padding * w_n) * w_img)
+    y1 = int((y_c - h_n / 2 - padding * h_n) * h_img)
+    x2 = int((x_c + w_n / 2 + padding * w_n) * w_img)
+    y2 = int((y_c + h_n / 2 + padding * h_n) * h_img)
 
-    _yolo_face_model = YOLO(str(model_path))
-    return _yolo_face_model
+    x1, y1 = max(0, x1), max(0, y1)
+    x2, y2 = min(w_img, x2), min(h_img, y2)
+
+    if x2 <= x1 or y2 <= y1:
+        return None
+
+    return image[y1:y2, x1:x2]
 
 
-def _decode_base64_image(image_b64: str) -> np.ndarray:
-    if not image_b64:
-        raise ValueError("Image is required")
+# ===============================
+# Core public API
+# ===============================
+def extract_embedding(image_b64: str, weights_path: str) -> "np.ndarray | None":
+    """
+    Full pipeline:
+      1. Decode base64 image
+      2. Run Tiny YOLO (best.pt) to detect the face region
+      3. Crop the best detection from the original full-res image
+      4. Pass crop to InsightFace ArcFace for a 512-d embedding
+      5. Return L2-normalised embedding, or None if no face found
 
-    # Handle data URI prefix if present
+    Parameters
+    ----------
+    image_b64    : base64-encoded image string (may include data-URI prefix)
+    weights_path : path to best.pt saved with model.save_weights()
+
+    Returns
+    -------
+    np.ndarray shape (512,), dtype float32  —  or  None
+    """
+    # 1. Decode image
     if "," in image_b64:
         image_b64 = image_b64.split(",", 1)[1]
 
-    try:
-        image_bytes = base64.b64decode(image_b64)
-    except Exception as exc:
-        raise ValueError("Invalid base64 image") from exc
+    img_bytes = base64.b64decode(image_b64)
+    img_array = np.frombuffer(img_bytes, dtype=np.uint8)
+    image_bgr = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
 
-    img_array = np.frombuffer(image_bytes, dtype=np.uint8)
-    img = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
-    if img is None:
-        raise ValueError("Invalid image data")
-    return img
+    if image_bgr is None:
+        return None
 
+    # 2. YOLO inference — same preprocessing as training (resize → RGB → /255)
+    resized = cv2.resize(image_bgr, (IMAGE_SIZE, IMAGE_SIZE))
+    rgb = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB)
+    tensor = tf.expand_dims(tf.cast(rgb, tf.float32) / 255.0, axis=0)  # (1,416,416,3)
 
-def extract_arcface_embedding(image_b64: str) -> np.ndarray:
-    """
-    Extract a normalized ArcFace embedding from a base64 image.
-    Returns a 1D float32 numpy array.
-    """
-    img = _decode_base64_image(image_b64)
-    app = _get_arcface_app()
+    yolo = _get_yolo_model(weights_path)
+    pred = yolo(tensor, training=False).numpy()[0]   # (13, 13, 6)
 
-    faces = app.get(img)
+    # 3. Decode boxes — same function as training code
+    boxes = decode_predictions(pred, threshold=DETECTION_THRESHOLD)
+    if not boxes:
+        return None
+
+    # Pick the box with the highest objectness score
+    best_box = max(
+        boxes,
+        key=lambda b: pred[
+            min(int(b[1] * GRID_SIZE), GRID_SIZE - 1),
+            min(int(b[0] * GRID_SIZE), GRID_SIZE - 1),
+            4,
+        ],
+    )
+
+    # 4. Crop from original full-res image (not the 416-resized one)
+    face_crop = _box_to_crop(image_bgr, best_box)
+    if face_crop is None or face_crop.size == 0:
+        return None
+
+    # 5. ArcFace embedding
+    arcface = _get_arcface_app()
+    faces = arcface.get(face_crop)
+
     if not faces:
-        raise ValueError("No face detected")
+        # Fallback: try full image in case crop was too tight
+        faces = arcface.get(image_bgr)
 
-    # Pick the largest detected face
-    face = max(faces, key=lambda f: (f.bbox[2] - f.bbox[0]) * (f.bbox[3] - f.bbox[1]))
-    emb = face.normed_embedding
-    if emb is None:
-        raise ValueError("Failed to extract embedding")
-
-    return emb.astype(np.float32)
-
-
-def extract_arcface_embedding_with_yolo(image_b64: str, conf_threshold: float = 0.5) -> np.ndarray:
-    """
-    Detect face using YOLO (best.pt), then extract ArcFace embedding.
-    Returns a 1D float32 numpy array.
-    """
-    img = _decode_base64_image(image_b64)
-    model = _get_yolo_face_model()
-
-    results = model.predict(img, conf=conf_threshold, verbose=False)
-    if not results:
-        raise ValueError("No face detected")
-
-    boxes = results[0].boxes
-    if boxes is None or len(boxes) == 0:
-        raise ValueError("No face detected")
-
-    # Pick the largest detected box
-    best_box = None
-    best_area = 0.0
-    for box in boxes:
-        x1, y1, x2, y2 = box.xyxy[0].tolist()
-        area = max(0.0, (x2 - x1)) * max(0.0, (y2 - y1))
-        if area > best_area:
-            best_area = area
-            best_box = (x1, y1, x2, y2)
-
-    if best_box is None:
-        raise ValueError("No face detected")
-
-    x1, y1, x2, y2 = map(int, best_box)
-    h, w = img.shape[:2]
-    x1 = max(0, min(x1, w - 1))
-    y1 = max(0, min(y1, h - 1))
-    x2 = max(0, min(x2, w))
-    y2 = max(0, min(y2, h))
-    if x2 <= x1 or y2 <= y1:
-        raise ValueError("Invalid face box")
-
-    crop = img[y1:y2, x1:x2]
-    app = _get_arcface_app()
-    faces = app.get(crop)
     if not faces:
-        raise ValueError("No face detected")
+        return None
 
-    face = max(faces, key=lambda f: (f.bbox[2] - f.bbox[0]) * (f.bbox[3] - f.bbox[1]))
-    emb = face.normed_embedding
+    # Use the largest detected face if multiple are returned
+    best_face = max(
+        faces,
+        key=lambda f: (f.bbox[2] - f.bbox[0]) * (f.bbox[3] - f.bbox[1]),
+    )
+
+    embedding = best_face.embedding  # (512,)
+    norm = np.linalg.norm(embedding)
+    if norm == 0:
+        return None
+
+    return (embedding / norm).astype(np.float32)
+
+
+def find_matching_student(face_emb: np.ndarray, students: list, threshold: float = SIMILARITY_THRESHOLD):
+    """
+    Cosine-similarity search over all stored student embeddings.
+
+    Returns
+    -------
+    (matched_student, score)  if best score >= threshold
+    (None, best_score)        otherwise
+    """
+    if not students:
+        return None, 0.0
+
+    db_embeddings = np.array([s.face_emb for s in students], dtype=np.float32)
+    similarities = cosine_similarity([face_emb], db_embeddings)[0]
+
+    best_idx = int(np.argmax(similarities))
+    best_score = float(similarities[best_idx])
+
+    if best_score >= threshold:
+        return students[best_idx], best_score
+
+    return None, best_score
+
+
+def recognize_face(image_b64: str, weights_path: str, students: list, threshold: float = SIMILARITY_THRESHOLD):
+    """
+    Convenience wrapper: detect → embed → match.
+
+    Returns
+    -------
+    dict  {"id", "name", "matricule", "score"}  on match
+    None  if no face detected or no student matched
+    """
+    emb = extract_embedding(image_b64, weights_path)
     if emb is None:
-        raise ValueError("Failed to extract embedding")
+        return None
 
-    return emb.astype(np.float32)
+    student, score = find_matching_student(emb, students, threshold)
+    if student is None:
+        return None
 
-
-def compare_embeddings(emb1: np.ndarray, emb2: np.ndarray) -> float:
-    """
-    Cosine similarity between two embeddings.
-    Returns a float in [-1, 1], higher is more similar.
-    """
-    if emb1 is None or emb2 is None:
-        raise ValueError("Embeddings must not be None")
-
-    v1 = np.asarray(emb1, dtype=np.float32)
-    v2 = np.asarray(emb2, dtype=np.float32)
-    if v1.ndim != 1 or v2.ndim != 1:
-        raise ValueError("Embeddings must be 1D vectors")
-
-    denom = (np.linalg.norm(v1) * np.linalg.norm(v2))
-    if denom == 0:
-        raise ValueError("Zero-norm embedding")
-
-    return float(np.dot(v1, v2) / denom)
-
-
-def match_embedding(query_emb: np.ndarray, db_embeddings: np.ndarray):
-    """
-    Compare a query embedding to a list/array of embeddings.
-    Returns (best_index, best_score). If db is empty, returns (None, None).
-    """
-    if db_embeddings is None or len(db_embeddings) == 0:
-        return None, None
-
-    db = np.asarray(db_embeddings, dtype=np.float32)
-    q = np.asarray(query_emb, dtype=np.float32)
-
-    # Normalize if not already
-    q = q / (np.linalg.norm(q) + 1e-8)
-    db = db / (np.linalg.norm(db, axis=1, keepdims=True) + 1e-8)
-
-    scores = np.dot(db, q)
-    best_idx = int(np.argmax(scores))
-    best_score = float(scores[best_idx])
-    return best_idx, best_score
+    return {
+        "id": student.id,
+        "name": student.name,
+        "matricule": student.matricule,
+        "score": round(score, 3),
+    }
