@@ -5,7 +5,7 @@ import api from "@/lib/api";
 import { AxiosError } from "axios";
 import ToastStack, { ToastItem, ToastType } from "@/components/ToastStack";
 import LoadingSpinner from "@/components/LoadingSpinner";
-import { X } from "lucide-react";
+import { X, Edit, Trash2 } from "lucide-react";
 
 export type CrudFieldType =
   | "text"
@@ -56,11 +56,24 @@ const toStringValue = (value: unknown): string => {
 
 const toDatetimeLocalValue = (value: unknown): string => {
   if (!value) return "";
-  const date = new Date(String(value));
+  const raw = String(value);
+
+  // If the backend returns a "naive" local ISO string, keep it as-is.
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(raw) && !/(Z|[+-]\d{2}:\d{2})$/.test(raw)) {
+    return raw.slice(0, 16);
+  }
+
+  // If the value includes a timezone, convert to local for the input.
+  const date = new Date(raw);
   if (Number.isNaN(date.getTime())) return "";
   const offsetMs = date.getTimezoneOffset() * 60000;
   const localDate = new Date(date.getTime() - offsetMs);
   return localDate.toISOString().slice(0, 16);
+};
+
+const normalizeDatetimeLocal = (value: string): string => {
+  if (!value) return value;
+  return value.length === 16 ? `${value}:00` : value;
 };
 
 const buildInitialForm = (fields: CrudField[]): FormState =>
@@ -189,7 +202,8 @@ export default function AdminCrudPage({
       }
 
       if (field.type === "datetime-local") {
-        payload[field.key] = new Date(value).toISOString();
+        // Keep datetime-local in local time (no timezone shift).
+        payload[field.key] = normalizeDatetimeLocal(value);
         return;
       }
 
@@ -439,16 +453,18 @@ export default function AdminCrudPage({
                         <button
                           type="button"
                           onClick={() => handleEdit(row)}
-                          className="rounded border px-2 py-1 text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
+                          className="inline-flex items-center justify-center rounded border p-1 text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
+                          aria-label="Edit"
                         >
-                          Edit
+                          <Edit size={16} />
                         </button>
                         <button
                           type="button"
                           onClick={() => promptDelete(row)}
-                          className="rounded border border-red-300 px-2 py-1 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                          className="inline-flex items-center justify-center rounded border border-red-300 p-1 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                          aria-label="Delete"
                         >
-                          Delete
+                          <Trash2 size={16} />
                         </button>
                       </div>
                     </td>

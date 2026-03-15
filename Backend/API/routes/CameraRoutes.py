@@ -5,9 +5,6 @@ from config.database import db
 from models.Camera import Camera
 from models.Room import Room
 from models.ClassSession import ClassSession
-from utils.ai import recognize_multiple_faces
-import cv2
-import base64
 
 camera_bp = Blueprint("cameras", __name__)
 camera_status = {}
@@ -119,52 +116,4 @@ def set_camera_status(camera_id):
     return jsonify({
         "message": "Camera status updated",
         "status": camera_status[camera.idCamera]
-    })
-
-@camera_bp.route("/open-camera", methods=["GET"])
-def open_camera():
-    data = request.json
-    session_id = data.get("session_id")
-    if not session_id:
-        return jsonify({"error": "session_id is required"}), 400
-
-    # Use webcam (0) or RTSP/RTMP URL
-    camera_url = "rtsp://localhost:8554/live"  # change to "rtsp://localhost:8554/live" for MediaMTX
-    cap = cv2.VideoCapture(camera_url)
-
-    if not cap.isOpened():
-        return jsonify({"error": f"Could not open camera: {camera_url}"}), 500
-
-    recognized_students = []
-
-    try:
-        while True:
-            ret, frame = cap.read()
-            if not ret:
-                print("Failed to capture frame")
-                break
-
-            # Convert frame to base64
-            _, buffer = cv2.imencode(".jpg", frame)
-            image_b64 = base64.b64encode(buffer).decode("utf-8")
-
-            # Recognize faces in this frame
-            results = recognize_multiple_faces(image_b64, session_id)
-            recognized_students = results
-
-            # Display the frame with a window
-            cv2.imshow("Camera - Press Q to quit", frame)
-
-            # Quit if 'q' is pressed
-            if cv2.waitKey(1) & 0xFF == ord("q"):
-                break
-
-    finally:
-        cap.release()
-        cv2.destroyAllWindows()
-
-    return jsonify({
-        "session_id": session_id,
-        "recognized_count": len(recognized_students),
-        "students": recognized_students
     })

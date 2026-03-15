@@ -1,257 +1,29 @@
 import base64
 import cv2
 import numpy as np
-from sklearn.metrics.pairwise import cosine_similarity
-import insightface
-from datetime import datetime
+from ultralytics import YOLO
+from pathlib import Path
+from insightface.app import FaceAnalysis
 
-from models.Student import Student
-from models.ClassSession import ClassSession
-from config.database import db
-
-# =============================
-# CONFIG
-# =============================
-SIMILARITY_THRESHOLD = 0.5
+_arcface_app = None
+_yolo_face_model = None
 
 # =============================
-# LOAD FACE MODEL (SINGLETON)
+# YOLO (best.pt) LIVE FACE DETECTION
 # =============================
-_face_app = insightface.app.FaceAnalysis(
-    name="buffalo_l",
-    providers=["CPUExecutionProvider"]
-)
-_face_app.prepare(ctx_id=0, det_size=(640, 640))
+def detect(conf_threshold: float = 0.5, camera_index: int = 0):
 
-# =============================
-# BASE64 → IMAGE
-# =============================
-def _b64_to_image(image_b64: str) -> np.ndarray:
-    """
-    Convert base64 string to OpenCV image
-    """
-    if "," in image_b64:
-        image_b64 = image_b64.split(",")[1]
+    model_path = Path(__file__).resolve().parents[2] / "AI" / "best.pt"
+    if not model_path.exists():
+        raise FileNotFoundError(f"Model not found: {model_path}")
 
-    img_bytes = base64.b64decode(image_b64)
-    img_array = np.frombuffer(img_bytes, dtype=np.uint8)
-
-    img = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
-    if img is None:
-        raise ValueError("Invalid base64 image")
-
-    return img
-
-# =============================
-# EMBEDDING EXTRACTION
-# =============================
-def _extract_embedding(image_b64: str) -> np.ndarray:
-    img = _b64_to_image(image_b64)
-
-    if img is None:
-        raise ValueError("Image decoding failed")
-
-    faces = _face_app.get(img)
-
-    if faces is None:
-        raise ValueError("Face model returned None")
-
-    if len(faces) == 0:
-        raise ValueError("No face detected in image")
-
-    embedding = faces[0].embedding
-
-    if embedding is None:
-        raise ValueError("Embedding extraction failed")
-
-    return embedding.astype(float)
-
-# =============================
-# PUBLIC API (ORIGINAL)
-# =============================
-def register_face(name: str, matricule: str, image_b64: str):
-    embedding = _extract_embedding(image_b64)
-
-    student = Student(
-        name=name,
-        matricule=matricule,
-        face_emb=embedding.tolist()
-    )
-
-    db.session.add(student)
-    db.session.commit()
-
-    return student
-
-
-def recognize_face(image_b64: str, session_id: int):
-    print("Step 1: Start recognize_face")
-    
-    try:
-        embedding = _extract_embedding(image_b64)
-        print("Step 2: embedding shape:", embedding.shape if hasattr(embedding, "shape") else embedding)
-    except Exception as e:
-        print("Error extracting embedding:", e)
-        return None
-
-    session = ClassSession.query.get(session_id)
-    print("Step 3: session found?", session is not None)
-    if not session:
-        return None
-
-    students = Student.query.filter_by(class_id=session.class_id).all()
-    print(f"Step 4: Found {len(students)} students in class {session.class_id}")
-    if not students:
-        return None
-
-    try:
-        db_embeddings = np.array([s.face_emb for s in students])
-        similarities = cosine_similarity([embedding], db_embeddings)[0]
-    except Exception as e:
-        print("Error computing similarity:", e)
-        return None
-
-    best_idx = int(np.argmax(similarities))
-    best_score = float(similarities[best_idx])
-
-    if best_score >= SIMILARITY_THRESHOLD:
-        s = students[best_idx]
-        return {
-            "id": s.id,
-            "name": s.name,
-            "matricule": s.matricule,
-            "score": round(best_score, 3),
-        }
-
-    return None
-
-
-# ==========================================================
-# ===================== NEW FUNCTIONS ======================
-# ==========================================================
-
-# =============================
-# Extract ALL embeddings from image
-# =============================
-def extract_all_embeddings(image_b64: str):
-    img = _b64_to_image(image_b64)
-    faces = _face_app.get(img)
-
-    if not faces or len(faces) == 0:
-        raise ValueError("No faces detected")
-
-    return [face.embedding.astype(float) for face in faces]
-
-
-# =============================
-# Recognize MULTIPLE faces
-# =============================
-def recognize_multiple_faces(image_b64: str, session_id: int):
-    session = ClassSession.query.get(session_id)
-    if not session:
-        return []
-
-    students = Student.query.filter_by(class_id=session.class_id).all()
-    if not students:
-        return []
-
-    db_embeddings = np.array([s.face_emb for s in students])
-    embeddings = extract_all_embeddings(image_b64)
-
-    results = []
-
-    for emb in embeddings:
-        similarities = cosine_similarity([emb], db_embeddings)[0]
-        best_idx = int(np.argmax(similarities))
-        best_score = float(similarities[best_idx])
-
-        if best_score >= SIMILARITY_THRESHOLD:
-            s = students[best_idx]
-            results.append({
-                "id": s.id,
-                "name": s.name,
-                "matricule": s.matricule,
-                "score": round(best_score, 3),
-            })
-
-    return results
-
-# =============================
-# Update student face
-# =============================
-def update_student_face(student_id: int, image_b64: str):
-    student = Student.query.get(student_id)
-    if not student:
-        return None
-
-    embedding = _extract_embedding(image_b64)
-    student.face_emb = embedding.tolist()
-
-    db.session.commit()
-    return student
-
-# =============================
-# Manual similarity check
-# =============================
-def compare_two_faces(image1_b64: str, image2_b64: str):
-    emb1 = _extract_embedding(image1_b64)
-    emb2 = _extract_embedding(image2_b64)
-
-    score = cosine_similarity([emb1], [emb2])[0][0]
-
-    return {
-        "similarity": round(float(score), 4),
-        "match": score >= SIMILARITY_THRESHOLD
-    }
-
-
-# =============================
-# Mark attendance
-# =============================
-def mark_attendance(student_id: int, session_id: int):
-    student = Student.query.get(student_id)
-    session = ClassSession.query.get(session_id)
-
-    if not student or not session:
-        return None
-
-    # Example: assuming session has attendance list
-    if not hasattr(session, "attendees"):
-        session.attendees = []
-
-    session.attendees.append(student.id)
-    db.session.commit()
-
-    return {
-        "student": student.name,
-        "session": session.id,
-        "timestamp": datetime.utcnow().isoformat()
-    }
-
-# =============================
-# WEBCAM LIVE RECOGNITION
-# =============================
-def recognize_from_webcam(session_id: int):
-    cap = cv2.VideoCapture(0)
+    model = YOLO(str(model_path))
+    cap = cv2.VideoCapture(camera_index)
 
     if not cap.isOpened():
-        print("Cannot open webcam")
-        return
+        raise RuntimeError("Cannot open webcam")
 
-    session = ClassSession.query.get(session_id)
-    if not session:
-        print("Session not found")
-        return
-
-    students = Student.query.filter_by(class_id=session.class_id).all()
-
-    if not students:
-        print("No students found")
-        return
-
-    db_embeddings = np.array([s.face_emb for s in students])
-
-    print("Starting webcam recognition... Press 'q' to quit")
+    print("Starting YOLO webcam detection... Press 'q' to quit")
 
     while True:
         ret, frame = cap.read()
@@ -259,41 +31,194 @@ def recognize_from_webcam(session_id: int):
             print("Failed to grab frame")
             break
 
-        faces = _face_app.get(frame)
+        results = model.predict(frame, conf=conf_threshold, verbose=False)
+        if results:
+            boxes = results[0].boxes
+            if boxes is not None and len(boxes) > 0:
+                for box in boxes:
+                    x1, y1, x2, y2 = box.xyxy[0].tolist()
+                    conf = float(box.conf[0]) if hasattr(box, "conf") else 0.0
 
-        for face in faces:
-            emb = face.embedding.astype(float)
+                    x1, y1, x2, y2 = map(int, [x1, y1, x2, y2])
+                    label = f"Face {conf:.2f}"
 
-            similarities = cosine_similarity([emb], db_embeddings)[0]
-            best_idx = int(np.argmax(similarities))
-            best_score = float(similarities[best_idx])
+                    cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                    cv2.putText(
+                        frame,
+                        label,
+                        (x1, max(0, y1 - 10)),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.7,
+                        (0, 255, 0),
+                        2,
+                    )
 
-            x1, y1, x2, y2 = face.bbox.astype(int)
-
-            if best_score >= SIMILARITY_THRESHOLD:
-                student = students[best_idx]
-                name = f"{student.name} ({round(best_score,2)})"
-            else:
-                name = "Unknown"
-
-            # draw box
-            cv2.rectangle(frame, (x1,y1), (x2,y2), (0,255,0), 2)
-
-            # draw name
-            cv2.putText(
-                frame,
-                name,
-                (x1, y1 - 10),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.8,
-                (0,255,0),
-                2
-            )
-
-        cv2.imshow("Face Recognition", frame)
+        cv2.imshow("YOLO Face Detection", frame)
 
         if cv2.waitKey(1) & 0xFF == ord("q"):
             break
 
     cap.release()
     cv2.destroyAllWindows()
+
+
+# =============================
+# ArcFace (InsightFace) Face Recognition
+# =============================
+def _get_arcface_app():
+    global _arcface_app
+    if _arcface_app is not None:
+        return _arcface_app
+
+    app = FaceAnalysis(name="buffalo_l")
+    # ctx_id = -1 forces CPU; change to 0 if GPU is available
+    app.prepare(ctx_id=-1, det_size=(640, 640))
+    _arcface_app = app
+    return _arcface_app
+
+
+def _get_yolo_face_model():
+    global _yolo_face_model
+    if _yolo_face_model is not None:
+        return _yolo_face_model
+
+    model_path = Path(__file__).resolve().parents[2] / "AI" / "best.pt"
+    if not model_path.exists():
+        raise FileNotFoundError(f"Model not found: {model_path}")
+
+    _yolo_face_model = YOLO(str(model_path))
+    return _yolo_face_model
+
+
+def _decode_base64_image(image_b64: str) -> np.ndarray:
+    if not image_b64:
+        raise ValueError("Image is required")
+
+    # Handle data URI prefix if present
+    if "," in image_b64:
+        image_b64 = image_b64.split(",", 1)[1]
+
+    try:
+        image_bytes = base64.b64decode(image_b64)
+    except Exception as exc:
+        raise ValueError("Invalid base64 image") from exc
+
+    img_array = np.frombuffer(image_bytes, dtype=np.uint8)
+    img = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
+    if img is None:
+        raise ValueError("Invalid image data")
+    return img
+
+
+def extract_arcface_embedding(image_b64: str) -> np.ndarray:
+    """
+    Extract a normalized ArcFace embedding from a base64 image.
+    Returns a 1D float32 numpy array.
+    """
+    img = _decode_base64_image(image_b64)
+    app = _get_arcface_app()
+
+    faces = app.get(img)
+    if not faces:
+        raise ValueError("No face detected")
+
+    # Pick the largest detected face
+    face = max(faces, key=lambda f: (f.bbox[2] - f.bbox[0]) * (f.bbox[3] - f.bbox[1]))
+    emb = face.normed_embedding
+    if emb is None:
+        raise ValueError("Failed to extract embedding")
+
+    return emb.astype(np.float32)
+
+
+def extract_arcface_embedding_with_yolo(image_b64: str, conf_threshold: float = 0.5) -> np.ndarray:
+    """
+    Detect face using YOLO (best.pt), then extract ArcFace embedding.
+    Returns a 1D float32 numpy array.
+    """
+    img = _decode_base64_image(image_b64)
+    model = _get_yolo_face_model()
+
+    results = model.predict(img, conf=conf_threshold, verbose=False)
+    if not results:
+        raise ValueError("No face detected")
+
+    boxes = results[0].boxes
+    if boxes is None or len(boxes) == 0:
+        raise ValueError("No face detected")
+
+    # Pick the largest detected box
+    best_box = None
+    best_area = 0.0
+    for box in boxes:
+        x1, y1, x2, y2 = box.xyxy[0].tolist()
+        area = max(0.0, (x2 - x1)) * max(0.0, (y2 - y1))
+        if area > best_area:
+            best_area = area
+            best_box = (x1, y1, x2, y2)
+
+    if best_box is None:
+        raise ValueError("No face detected")
+
+    x1, y1, x2, y2 = map(int, best_box)
+    h, w = img.shape[:2]
+    x1 = max(0, min(x1, w - 1))
+    y1 = max(0, min(y1, h - 1))
+    x2 = max(0, min(x2, w))
+    y2 = max(0, min(y2, h))
+    if x2 <= x1 or y2 <= y1:
+        raise ValueError("Invalid face box")
+
+    crop = img[y1:y2, x1:x2]
+    app = _get_arcface_app()
+    faces = app.get(crop)
+    if not faces:
+        raise ValueError("No face detected")
+
+    face = max(faces, key=lambda f: (f.bbox[2] - f.bbox[0]) * (f.bbox[3] - f.bbox[1]))
+    emb = face.normed_embedding
+    if emb is None:
+        raise ValueError("Failed to extract embedding")
+
+    return emb.astype(np.float32)
+
+
+def compare_embeddings(emb1: np.ndarray, emb2: np.ndarray) -> float:
+    """
+    Cosine similarity between two embeddings.
+    Returns a float in [-1, 1], higher is more similar.
+    """
+    if emb1 is None or emb2 is None:
+        raise ValueError("Embeddings must not be None")
+
+    v1 = np.asarray(emb1, dtype=np.float32)
+    v2 = np.asarray(emb2, dtype=np.float32)
+    if v1.ndim != 1 or v2.ndim != 1:
+        raise ValueError("Embeddings must be 1D vectors")
+
+    denom = (np.linalg.norm(v1) * np.linalg.norm(v2))
+    if denom == 0:
+        raise ValueError("Zero-norm embedding")
+
+    return float(np.dot(v1, v2) / denom)
+
+
+def match_embedding(query_emb: np.ndarray, db_embeddings: np.ndarray):
+    """
+    Compare a query embedding to a list/array of embeddings.
+    Returns (best_index, best_score). If db is empty, returns (None, None).
+    """
+    if db_embeddings is None or len(db_embeddings) == 0:
+        return None, None
+
+    db = np.asarray(db_embeddings, dtype=np.float32)
+    q = np.asarray(query_emb, dtype=np.float32)
+
+    # Normalize if not already
+    q = q / (np.linalg.norm(q) + 1e-8)
+    db = db / (np.linalg.norm(db, axis=1, keepdims=True) + 1e-8)
+
+    scores = np.dot(db, q)
+    best_idx = int(np.argmax(scores))
+    best_score = float(scores[best_idx])
+    return best_idx, best_score

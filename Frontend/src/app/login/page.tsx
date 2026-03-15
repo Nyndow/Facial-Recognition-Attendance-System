@@ -39,13 +39,13 @@ export default function LoginPage() {
       >
         <div className="space-y-2">
           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-blue-600/80 dark:text-blue-300/80">
-            Face Attendance
+            ENI Attendance Application
           </p>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white sm:text-3xl">
-            Welcome back
+            Welcome
           </h1>
           <p className="text-sm text-slate-600 dark:text-slate-300">
-            Sign in to access your dashboard and sessions.
+            Sign in to access the application.
           </p>
         </div>
 
