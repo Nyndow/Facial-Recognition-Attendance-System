@@ -275,7 +275,7 @@ export default function AdminStudentsPage() {
           <option value="">No class</option>
           {classes.map((classItem) => (
             <option key={classItem.id} value={String(classItem.id)}>
-              {classItem.name} (ID: {classItem.id})
+              {classItem.name}
             </option>
           ))}
         </select>

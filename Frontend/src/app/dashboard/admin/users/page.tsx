@@ -13,7 +13,7 @@ export default function AdminUsersPage() {
   const teacherOptions = useMemo(
     () =>
       teachers.map((teacher) => ({
-        label: `${teacher.name} (ID: ${teacher.id})`,
+        label: teacher.name,
         value: teacher.id,
       })),
     [teachers]
@@ -22,7 +22,7 @@ export default function AdminUsersPage() {
   const classOptions = useMemo(
     () =>
       classes.map((classItem) => ({
-        label: `${classItem.name} (ID: ${classItem.id})`,
+        label: classItem.name,
         value: classItem.id,
       })),
     [classes]

@@ -11,7 +11,7 @@ export default function AdminRoomsPage() {
   const cameraOptions = useMemo(
     () =>
       cameras.map((camera) => ({
-        label: `${camera.nameCamera} (ID: ${camera.idCamera})`,
+        label: camera.nameCamera,
         value: camera.idCamera,
       })),
     [cameras]

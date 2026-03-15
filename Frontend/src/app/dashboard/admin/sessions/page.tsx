@@ -15,7 +15,7 @@ export default function AdminSessionsPage() {
   const roomOptions = useMemo(
     () =>
       rooms.map((room) => ({
-        label: `${room.nameRoom} (ID: ${room.idRoom})`,
+        label: room.nameRoom,
         value: room.idRoom,
       })),
     [rooms]
@@ -24,7 +24,7 @@ export default function AdminSessionsPage() {
   const teacherOptions = useMemo(
     () =>
       teachers.map((teacher) => ({
-        label: `${teacher.name} (ID: ${teacher.id})`,
+        label: teacher.name,
         value: teacher.id,
       })),
     [teachers]
@@ -33,7 +33,7 @@ export default function AdminSessionsPage() {
   const classOptions = useMemo(
     () =>
       classes.map((classItem) => ({
-        label: `${classItem.name} (ID: ${classItem.id})`,
+        label: classItem.name,
         value: classItem.id,
       })),
     [classes]
