@@ -1,21 +1,16 @@
 from flask import Blueprint, request, jsonify
 import numpy as np
 import os
+import requests
 
 from config.database import db
 from models.Student import Student
 from models.Attendance import Attendance
 
+
 student_bp = Blueprint("students", __name__)
+EMBED_API_URL = "http://127.0.0.1:5002/extract-embedding"
 
-# ---------------------------------------------------------------------------
-# Path to your trained Tiny YOLO weights — override via env var or set here
-# ---------------------------------------------------------------------------
-YOLO_WEIGHTS_PATH = os.environ.get("YOLO_WEIGHTS_PATH", "models/best.pt")
-
-# ---------------------------------------------------------------------------
-# GET /students  — list all
-# ---------------------------------------------------------------------------
 @student_bp.route("/students", methods=["GET"])
 def get_students():
     students = Student.query.all()
@@ -25,7 +20,6 @@ def get_students():
             "name": s.name,
             "matricule": s.matricule,
             "class_id": s.class_id,
-            # omit face_emb from list view (large payload)
         }
         for s in students
     ])
@@ -45,51 +39,39 @@ def get_student(student_id):
     })
 
 
-# # ---------------------------------------------------------------------------
-# # POST /students  — register a new student
-# # ---------------------------------------------------------------------------
-# @student_bp.route("/students", methods=["POST"])
-# def add_student():
-#     data = request.json or {}
-#     image_b64 = data.get("image")
+@student_bp.route("/students", methods=["POST"])
+def add_student():
+    data = request.json or {}
+    image_b64 = data.get("image")
 
-#     if not image_b64:
-#         return jsonify({"error": "image is required"}), 400
+    if not image_b64:
+        return jsonify({"error": "image is required"}), 400
 
-#     for field in ("name", "matricule"):
-#         if not data.get(field):
-#             return jsonify({"error": f"{field} is required"}), 400
+    for field in ("name", "matricule"):
+        if not data.get(field):
+            return jsonify({"error": f"{field} is required"}), 400
 
-#     # 1. Detect face + extract ArcFace embedding
-#     face_emb = extract_embedding(image_b64, YOLO_WEIGHTS_PATH)
-#     if face_emb is None:
-#         return jsonify({"error": "No face detected in the provided image"}), 400
+    try:
+        response = requests.post(EMBED_API_URL, json={"image": image_b64})
+        if response.status_code != 200:
+            return jsonify({"error": "Failed to extract embedding", "details": response.text}), 500
+        face_emb = response.json().get("embedding")
+    except Exception as e:
+        return jsonify({"error": "Error calling embedding API", "details": str(e)}), 500
 
-#     # 2. Duplicate-face check
-#     students = Student.query.all()
-#     matched, score = find_matching_student(face_emb, students)
-#     if matched:
-#         return jsonify({
-#             "error": "Face already registered",
-#             "matched_student": {
-#                 "id": matched.id,
-#                 "name": matched.name,
-#                 "matricule": matched.matricule,
-#             },
-#             "score": round(score, 3),
-#         }), 409
+    if not face_emb:
+        return jsonify({"error": "No face detected in the provided image"}), 400
 
-#     # 3. Persist new student
-#     new_student = Student(
-#         name=data["name"],
-#         matricule=data["matricule"],
-#         class_id=data.get("class_id"),
-#         face_emb=face_emb.tolist(),
-#     )
-#     db.session.add(new_student)
-#     db.session.commit()
+    new_student = Student(
+        name=data["name"],
+        matricule=data["matricule"],
+        class_id=data.get("class_id"),
+        face_emb=face_emb,  # embedding received from your API
+    )
+    db.session.add(new_student)
+    db.session.commit()
 
-#     return jsonify({"message": "Student added", "id": new_student.id}), 201
+    return jsonify({"message": "Student added", "id": new_student.id}), 201
 
 
 # ---------------------------------------------------------------------------

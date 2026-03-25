@@ -140,7 +140,7 @@ def set_camera_status(camera_id):
                     print(f"[DETECTOR] Started for session {session.id}")
                 else:
                     print(f"[DETECTOR] Failed to start: {res.text}")
-            else:  # status == 0
+            else:
                 detector_url = "http://127.0.0.1:5002/stop"
                 res = requests.post(detector_url, json={"session_id": session.id})
                 if res.status_code == 200:
@@ -160,7 +160,7 @@ def upload_face():
     file = request.files.get("file")
     if file:
         save_dir = "received"
-        os.makedirs(save_dir, exist_ok=True)  # <-- create folder if missing
+        os.makedirs(save_dir, exist_ok=True)
         file.save(os.path.join(save_dir, file.filename))
         return "OK", 200
     return "No file", 400
