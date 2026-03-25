@@ -38,7 +38,6 @@ export default function Sidebar() {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [now, setNow] = useState(() => new Date());
-  
 
   const activeSession = useMemo(() => {
     if (user?.isAdmin) return null;
@@ -52,9 +51,12 @@ export default function Sidebar() {
     );
   }, [now, sessions, user?.isAdmin]);
 
-  const { cameraStatus, toggleCamera } = useCameraStatus(activeSession?.idCamera, {
-    refreshKey: activeSession?.id,
-  });
+  const { cameraStatus, toggleCamera } = useCameraStatus(
+    activeSession?.idCamera,
+    {
+      refreshKey: activeSession?.id,
+    },
+  );
 
   useEffect(() => {
     if (theme === "dark") {
@@ -107,16 +109,54 @@ export default function Sidebar() {
 
   const navItems = user?.isAdmin
     ? [
-      { href: "/dashboard/admin", label: "Admin Home", icon: <Shield size={18} /> },
-      { href: "/dashboard/admin/users", label: "Users", icon: <Users size={18} /> },
-      { href: "/dashboard/admin/students", label: "Students", icon: <GraduationCap size={18} /> },
-      { href: "/dashboard/admin/classes", label: "Classes", icon: <BookOpen size={18} /> },
-      { href: "/dashboard/admin/teachers", label: "Teachers", icon: <Presentation size={18} /> },
-      { href: "/dashboard/admin/rooms", label: "Rooms", icon: <DoorOpen size={18} /> },
-      { href: "/dashboard/admin/cameras", label: "Cameras", icon: <Camera size={18} /> },
-      { href: "/dashboard/admin/sessions", label: "Sessions", icon: <CalendarClock size={18} /> },
-    ]
-    : [{ href: "/dashboard", label: "Dashboard", icon: <LayoutDashboard size={18} /> }];
+        {
+          href: "/dashboard/admin",
+          label: "Admin Home",
+          icon: <Shield size={18} />,
+        },
+        {
+          href: "/dashboard/admin/users",
+          label: "Users",
+          icon: <Users size={18} />,
+        },
+        {
+          href: "/dashboard/admin/students",
+          label: "Students",
+          icon: <GraduationCap size={18} />,
+        },
+        {
+          href: "/dashboard/admin/classes",
+          label: "Classes",
+          icon: <BookOpen size={18} />,
+        },
+        {
+          href: "/dashboard/admin/teachers",
+          label: "Teachers",
+          icon: <Presentation size={18} />,
+        },
+        {
+          href: "/dashboard/admin/rooms",
+          label: "Rooms",
+          icon: <DoorOpen size={18} />,
+        },
+        {
+          href: "/dashboard/admin/cameras",
+          label: "Cameras",
+          icon: <Camera size={18} />,
+        },
+        {
+          href: "/dashboard/admin/sessions",
+          label: "Sessions",
+          icon: <CalendarClock size={18} />,
+        },
+      ]
+    : [
+        {
+          href: "/dashboard",
+          label: "Dashboard",
+          icon: <LayoutDashboard size={18} />,
+        },
+      ];
 
   return (
     <>
@@ -141,8 +181,9 @@ export default function Sidebar() {
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-40 flex h-screen flex-col bg-gray-100 p-4 transition-all duration-300 dark:bg-gray-900 md:sticky md:top-0 ${mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
-          } ${collapsed ? "w-20" : "w-72 md:w-64"}`}
+        className={`fixed inset-y-0 left-0 z-40 flex h-screen flex-col bg-gray-100 p-4 transition-all duration-300 dark:bg-gray-900 md:sticky md:top-0 ${
+          mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+        } ${collapsed ? "w-20" : "w-72 md:w-64"}`}
       >
         <div className="mb-6 flex items-center justify-between">
           {!collapsed && (
@@ -162,7 +203,11 @@ export default function Sidebar() {
               onClick={() => setCollapsed(!collapsed)}
               className="hidden rounded p-1 hover:bg-gray-200 dark:hover:bg-gray-700 md:block"
             >
-              {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+              {collapsed ? (
+                <ChevronRight size={18} />
+              ) : (
+                <ChevronLeft size={18} />
+              )}
             </button>
           </div>
         </div>
@@ -173,24 +218,25 @@ export default function Sidebar() {
           {navItems.map((item) => {
             const isActive =
               pathname === item.href ||
-              (item.href !== "/dashboard" && pathname.startsWith(`${item.href}/`));
+              (item.href !== "/dashboard" &&
+                pathname.startsWith(`${item.href}/`));
             return (
-              <div
-
+              <button
                 key={item.href}
                 onClick={() => handleNavigate(item.href)}
-                className={`mb-2 flex cursor-pointer items-center rounded p-3 transition ${isActive
+                className={`mb-2 flex cursor-pointer items-center rounded p-3 transition ${
+                  isActive
                     ? "bg-blue-500 text-white"
                     : "text-gray-700 hover:bg-gray-200 dark:text-gray-200 dark:hover:bg-gray-700"
-                  }`}
-
+                }`}
               >
                 <span className="shrink-0">{item.icon}</span>
-                {!collapsed && <span className="ml-3 truncate">{item.label}</span>}
-              </div>
+                {!collapsed && (
+                  <span className="ml-3 truncate">{item.label}</span>
+                )}
+              </button>
             );
           })}
-
 
           {!user?.isAdmin && activeSession?.idCamera && (
             <div className="mb-4">
@@ -198,20 +244,32 @@ export default function Sidebar() {
               <button
                 type="button"
                 onClick={toggleCamera}
-                aria-label={cameraStatus === 1 ? "Stop Camera" : "Activate Camera"}
+                aria-label={
+                  cameraStatus === 1 ? "Stop Camera" : "Activate Camera"
+                }
                 title={cameraStatus === 1 ? "Stop Camera" : "Activate Camera"}
-                className={`rounded font-medium transition ${collapsed
+                className={`rounded font-medium transition ${
+                  collapsed
                     ? "mx-auto flex h-10 w-10 items-center justify-center"
                     : "w-full px-3 py-2 text-sm"
-                  } ${cameraStatus === 1
+                } ${
+                  cameraStatus === 1
                     ? "bg-red-600 text-white hover:bg-red-700"
                     : "bg-green-600 text-white hover:bg-green-700"
-                  }`}
+                }`}
               >
-                <span className={`flex items-center justify-center ${collapsed ? "" : "gap-2"}`}>
-                  {cameraStatus === 1 ? <VideoOff size={18} /> : <Video size={18} />}
+                <span
+                  className={`flex items-center justify-center ${collapsed ? "" : "gap-2"}`}
+                >
+                  {cameraStatus === 1 ? (
+                    <VideoOff size={18} />
+                  ) : (
+                    <Video size={18} />
+                  )}
                   {!collapsed && (
-                    <span>{cameraStatus === 1 ? "Stop Camera" : "Activate Camera"}</span>
+                    <span>
+                      {cameraStatus === 1 ? "Stop Camera" : "Activate Camera"}
+                    </span>
                   )}
                 </span>
               </button>
@@ -233,7 +291,7 @@ export default function Sidebar() {
           </button>
 
           {userMenuOpen && (
-            <div
+            <button
               onClick={(event) => event.stopPropagation()}
               className="absolute bottom-12 left-0 z-20 w-full overflow-hidden rounded-md border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800"
             >
@@ -251,7 +309,7 @@ export default function Sidebar() {
                 <LogOut size={16} />
                 <span>Logout</span>
               </button>
-            </div>
+            </button>
           )}
         </div>
       </aside>
