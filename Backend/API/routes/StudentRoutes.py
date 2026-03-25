@@ -11,6 +11,7 @@ from models.Attendance import Attendance
 student_bp = Blueprint("students", __name__)
 EMBED_API_URL = "http://127.0.0.1:5002/extract-embedding"
 
+# Get all students
 @student_bp.route("/students", methods=["GET"])
 def get_students():
     students = Student.query.all()
@@ -25,9 +26,7 @@ def get_students():
     ])
 
 
-# ---------------------------------------------------------------------------
-# GET /students/<id>
-# ---------------------------------------------------------------------------
+# Get student by id
 @student_bp.route("/students/<int:student_id>", methods=["GET"])
 def get_student(student_id):
     student = Student.query.get_or_404(student_id)
@@ -38,7 +37,7 @@ def get_student(student_id):
         "class_id": student.class_id,
     })
 
-
+# Add student
 @student_bp.route("/students", methods=["POST"])
 def add_student():
     data = request.json or {}
@@ -152,9 +151,7 @@ def update_student(student_id):
     return jsonify({"message": "Student updated"})
 
 
-# ---------------------------------------------------------------------------
-# DELETE /students/<id>
-# ---------------------------------------------------------------------------
+# Delete student
 @student_bp.route("/students/<int:student_id>", methods=["DELETE"])
 def delete_student(student_id):
     student = Student.query.get_or_404(student_id)

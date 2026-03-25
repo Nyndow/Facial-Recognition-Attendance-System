@@ -6,6 +6,7 @@ from config.database import db
 from models.Camera import Camera
 from models.Room import Room
 from models.ClassSession import ClassSession
+from models.Student import Student
 
 camera_bp = Blueprint("cameras", __name__)
 camera_status = {}
@@ -44,6 +45,7 @@ def _serialize_camera(camera):
         "nameCamera": camera.nameCamera,
         "urlCamera": camera.urlCamera
     }
+
 
 
 @camera_bp.route("/cameras", methods=["GET"])
@@ -133,20 +135,25 @@ def set_camera_status(camera_id):
     if session:
         import requests
         try:
+            detector_url = "http://127.0.0.1:5002/start" if status == 1 else "http://127.0.0.1:5002/stop"
+
+            payload = {"session_id": session.id}
+
             if status == 1:
-                detector_url = "http://127.0.0.1:5002/start"
-                res = requests.post(detector_url, json={"session_id": session.id})
-                if res.status_code == 200:
-                    print(f"[DETECTOR] Started for session {session.id}")
-                else:
-                    print(f"[DETECTOR] Failed to start: {res.text}")
+                students = Student.query.filter_by(class_id=session.class_id).all()
+                embeddings = []
+                for s in students:
+                    if s.face_emb:
+                        embeddings.append({"id": s.id, "embedding": s.face_emb})
+                
+                payload["embeddings"] = embeddings
+
+            res = requests.post(detector_url, json=payload)
+            if res.status_code == 200:
+                print(f"[DETECTOR] {'Started' if status == 1 else 'Stopped'} for session {session.id}")
             else:
-                detector_url = "http://127.0.0.1:5002/stop"
-                res = requests.post(detector_url, json={"session_id": session.id})
-                if res.status_code == 200:
-                    print(f"[DETECTOR] Stopped for session {session.id}")
-                else:
-                    print(f"[DETECTOR] Failed to stop: {res.text}")
+                print(f"[DETECTOR] Failed to {'start' if status == 1 else 'stop'}: {res.text}")
+
         except Exception as e:
             print(f"[DETECTOR] Error contacting detector: {e}")
 
