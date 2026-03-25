@@ -20,4 +20,4 @@ Thumbs.db
 .idea/
 
 Backend/AI/images
-Backend/API/instance/
+Backend/API/instance/students.db

@@ -43,6 +43,7 @@ def get_student(student_id):
 def add_student():
     data = request.json or {}
     image_b64 = data.get("image")
+    class_id = data.get("class_id")
 
     if not image_b64:
         return jsonify({"error": "image is required"}), 400
@@ -50,12 +51,31 @@ def add_student():
     for field in ("name", "matricule"):
         if not data.get(field):
             return jsonify({"error": f"{field} is required"}), 400
+        
+    embedding_list = []
+    if class_id:
+        students = Student.query.filter_by(class_id=class_id).all()
+        embedding_list = [s.face_emb for s in students if s.face_emb]
 
     try:
-        response = requests.post(EMBED_API_URL, json={"image": image_b64})
+        response = requests.post(
+            EMBED_API_URL,
+            json={
+                "image": image_b64,
+                "embedding_list": embedding_list
+            }
+        )
+
         if response.status_code != 200:
-            return jsonify({"error": "Failed to extract embedding", "details": response.text}), 500
+            try:
+                error_data = response.json()
+            except Exception:
+                error_data = {"error": response.text}
+
+            return jsonify(error_data), response.status_code
+
         face_emb = response.json().get("embedding")
+
     except Exception as e:
         return jsonify({"error": "Error calling embedding API", "details": str(e)}), 500
 
@@ -65,51 +85,71 @@ def add_student():
     new_student = Student(
         name=data["name"],
         matricule=data["matricule"],
-        class_id=data.get("class_id"),
-        face_emb=face_emb,  # embedding received from your API
+        class_id=class_id,
+        face_emb=face_emb,
     )
+
     db.session.add(new_student)
     db.session.commit()
 
     return jsonify({"message": "Student added", "id": new_student.id}), 201
 
+# Update student
+@student_bp.route("/students/<int:student_id>", methods=["PUT"])
+def update_student(student_id):
+    student = Student.query.get_or_404(student_id)
+    data = request.json or {}
+    student.name = data.get("name", student.name)
+    student.matricule = data.get("matricule", student.matricule)
+    class_id = data.get("class_id", student.class_id)
+    student.class_id = class_id
 
-# ---------------------------------------------------------------------------
-# PUT /students/<id>  — update student info and/or face
-# ---------------------------------------------------------------------------
-# @student_bp.route("/students/<int:student_id>", methods=["PUT"])
-# def update_student(student_id):
-#     student = Student.query.get_or_404(student_id)
-#     data = request.json or {}
+    image_b64 = data.get("image")
 
-#     student.name = data.get("name", student.name)
-#     student.matricule = data.get("matricule", student.matricule)
-#     student.class_id = data.get("class_id", student.class_id)
+    if image_b64:
+        embedding_list = []
+        if class_id:
+            students = Student.query.filter_by(class_id=class_id).all()
+            embedding_list = [
+                s.face_emb for s in students
+                if s.face_emb and s.id != student_id
+            ]
 
-#     image_b64 = data.get("image")
-#     if image_b64:
-#         face_emb = extract_embedding(image_b64, YOLO_WEIGHTS_PATH)
-#         if face_emb is None:
-#             return jsonify({"error": "No face detected in the provided image"}), 400
+        try:
+            response = requests.post(
+                EMBED_API_URL,
+                json={
+                    "image": image_b64,
+                    "embedding_list": embedding_list
+                }
+            )
 
-#         # Optional: guard against accidentally overwriting with another person's face
-#         other_students = [s for s in Student.query.all() if s.id != student_id]
-#         matched, score = find_matching_student(face_emb, other_students)
-#         if matched:
-#             return jsonify({
-#                 "error": "Face belongs to another registered student",
-#                 "matched_student": {
-#                     "id": matched.id,
-#                     "name": matched.name,
-#                     "matricule": matched.matricule,
-#                 },
-#                 "score": round(score, 3),
-#             }), 409
+            if response.status_code != 200:
+                try:
+                    error_data = response.json()
+                except Exception:
+                    error_data = {"error": response.text}
 
-#         student.face_emb = face_emb.tolist()
+                return jsonify(error_data), response.status_code
 
-#     db.session.commit()
-#     return jsonify({"message": "Student updated"})
+            face_emb = response.json().get("embedding")
+
+        except Exception as e:
+            return jsonify({
+                "error": "Error calling embedding API",
+                "details": str(e)
+            }), 500
+
+        if not face_emb:
+            return jsonify({
+                "error": "No face detected in the provided image"
+            }), 400
+
+        student.face_emb = face_emb
+
+    db.session.commit()
+
+    return jsonify({"message": "Student updated"})
 
 
 # ---------------------------------------------------------------------------
