@@ -75,7 +75,7 @@ function DashboardContent() {
               
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {otherSessions.map((session) => (
-                  <div
+                  <button
                     key={session.id}
                     onClick={() => handleClick(session.id)}
                     className="cursor-pointer rounded-lg border bg-white p-4 shadow transition-shadow hover:border-blue-200 hover:shadow-lg dark:bg-gray-800 dark:hover:border-blue-400/40"
@@ -96,7 +96,7 @@ function DashboardContent() {
                       Start Time: {format(new Date(session.time), "PPPp")} -{" "}
                       {format(new Date(session.endSession), "PPPp")}
                     </p>
-                  </div>
+                  </button>
                 ))}
               </div>
             )}
