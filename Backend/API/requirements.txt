@@ -8,3 +8,7 @@ scikit-learn
 insightface
 onnxruntime
 reportlab
+tensorflow>=2.15.0
+numpy>=1.24.0
+tensorflow[and-cuda]>=2.15.0
+ultralytics

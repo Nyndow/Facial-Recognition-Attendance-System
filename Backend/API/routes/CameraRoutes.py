@@ -1,4 +1,5 @@
 from flask import Blueprint, request, jsonify
+import os
 from datetime import datetime
 from sqlalchemy import and_
 from config.database import db
@@ -24,6 +25,18 @@ def _has_active_session_for_camera(camera_id):
     ).first()
     return active_session is not None
 
+def get_active_session_for_camera(camera_id: int):
+    now = datetime.utcnow()
+
+    active_session = (
+        db.session.query(ClassSession)
+        .join(Room, ClassSession.idRoom == Room.idRoom)
+        .filter(Room.idCamera == camera_id)
+        .filter(ClassSession.time <= now, ClassSession.endSession >= now)
+        .first()
+    )
+
+    return active_session
 
 def _serialize_camera(camera):
     return {
@@ -91,9 +104,11 @@ def get_camera_status(camera_id):
     if has_active_session:
         status = camera_status.get(camera.idCamera, 1)
         camera_status[camera.idCamera] = status
+        print(f"[STATUS] Camera {camera.idCamera} active session detected, status={status}")
     else:
         status = 0
         camera_status[camera.idCamera] = 0
+        print(f"[STATUS] Camera {camera.idCamera} no active session, status set to 0")
 
     return jsonify({"idCamera": camera.idCamera, "status": status})
 
@@ -103,6 +118,7 @@ def set_camera_status(camera_id):
     camera = Camera.query.get_or_404(camera_id)
 
     if not _has_active_session_for_camera(camera_id):
+        print(here := f"[STATUS] Camera {camera.idCamera} no active session, cannot set status")
         return jsonify({"error": "No active session for this camera"}), 400
 
     data = request.json or {}
@@ -112,8 +128,40 @@ def set_camera_status(camera_id):
         return jsonify({"error": "status must be 0 or 1"}), 400
 
     camera_status[camera.idCamera] = int(status)
+    session = get_active_session_for_camera(camera_id)
+
+    if session:
+        import requests
+        try:
+            if status == 1:
+                detector_url = "http://127.0.0.1:5002/start"
+                res = requests.post(detector_url, json={"session_id": session.id})
+                if res.status_code == 200:
+                    print(f"[DETECTOR] Started for session {session.id}")
+                else:
+                    print(f"[DETECTOR] Failed to start: {res.text}")
+            else:  # status == 0
+                detector_url = "http://127.0.0.1:5002/stop"
+                res = requests.post(detector_url, json={"session_id": session.id})
+                if res.status_code == 200:
+                    print(f"[DETECTOR] Stopped for session {session.id}")
+                else:
+                    print(f"[DETECTOR] Failed to stop: {res.text}")
+        except Exception as e:
+            print(f"[DETECTOR] Error contacting detector: {e}")
 
     return jsonify({
         "message": "Camera status updated",
         "status": camera_status[camera.idCamera]
     })
+
+@camera_bp.route("/upload-photos", methods=["POST"])
+def upload_face():
+    file = request.files.get("file")
+    if file:
+        save_dir = "received"
+        os.makedirs(save_dir, exist_ok=True)  # <-- create folder if missing
+        file.save(os.path.join(save_dir, file.filename))
+        return "OK", 200
+    return "No file", 400
+

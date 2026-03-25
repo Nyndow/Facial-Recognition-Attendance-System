@@ -38,6 +38,7 @@ export default function Sidebar() {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [now, setNow] = useState(() => new Date());
+  
 
   const activeSession = useMemo(() => {
     if (user?.isAdmin) return null;
@@ -54,14 +55,6 @@ export default function Sidebar() {
   const { cameraStatus, toggleCamera } = useCameraStatus(activeSession?.idCamera, {
     refreshKey: activeSession?.id,
   });
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const storedTheme = localStorage.getItem("theme");
-    if (storedTheme === "dark" || storedTheme === "light") {
-      setTheme(storedTheme);
-    }
-  }, []);
 
   useEffect(() => {
     if (theme === "dark") {

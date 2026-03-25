@@ -1,3 +1,5 @@
+import os
+
 from flask import Blueprint, request, jsonify, send_file
 from config.database import db
 from models.ClassSession import ClassSession
@@ -5,6 +7,7 @@ from models.Class import Class
 from models.Room import Room
 from utils.utilToken import token_required, admin_required
 from utils.utilPdf import generate_attendance_pdf
+import os
 
 from datetime import datetime
 class_session_bp = Blueprint("class_sessions", __name__)
@@ -232,3 +235,13 @@ def export_attendance():
         as_attachment=True,
         download_name=f"attendance_{session.get('id', 'sheet')}.pdf"
     )
+
+@class_session_bp.route("/sessions/upload-face", methods=["POST"])
+def upload_face():
+    file = request.files.get("file")
+    if file:
+        save_dir = "received"
+        os.makedirs(save_dir, exist_ok=True) 
+        file.save(os.path.join(save_dir, file.filename))
+        return "OK", 200
+    return "No file", 400
