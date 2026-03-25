@@ -36,23 +36,24 @@ export const useCameraStatus = (
   }, [cameraId, options?.refreshKey]);
 
   // Toggle camera status
-  const toggleCamera = useCallback(async () => {
-    if (!cameraId) {
-      console.warn("No camera assigned.");
-      return;
-    }
+const toggleCamera = useCallback(async () => {
+  if (!cameraId) {
+    console.warn("No camera assigned.");
+    return;
+  }
 
-    const newStatus: CameraStatus = cameraStatus === 1 ? 0 : 1;
+  setCameraStatus((prevStatus) => {
+    const newStatus: CameraStatus = prevStatus === 1 ? 0 : 1;
 
-    try {
-      const res = await api.post(`/camera-status/${cameraId}`, { status: newStatus });
-      setCameraStatus(res.data?.status === 1 ? 1 : 0);
-    } catch (err) {
-      console.error("Failed to update camera status.", err);
-      // fallback: assume status did not change
-      setCameraStatus(cameraStatus);
-    }
-  }, [cameraId, cameraStatus]);
+    api
+      .post(`/camera-status/${cameraId}`, { status: newStatus })
+      .catch((err) => {
+        console.error("Failed to update camera status.", err);
+      });
+
+    return newStatus;
+  });
+}, [cameraId]);
 
   return { cameraStatus, toggleCamera };
 };

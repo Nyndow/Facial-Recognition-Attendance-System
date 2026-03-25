@@ -55,7 +55,7 @@ export default function Sidebar() {
     activeSession?.idCamera,
     {
       refreshKey: activeSession?.id,
-    },
+    }
   );
 
   useEffect(() => {
@@ -77,9 +77,7 @@ export default function Sidebar() {
 
   useEffect(() => {
     const handleDocumentClick = () => {
-      if (userMenuOpen) {
-        setUserMenuOpen(false);
-      }
+      if (userMenuOpen) setUserMenuOpen(false);
     };
 
     document.addEventListener("click", handleDocumentClick);
@@ -109,54 +107,16 @@ export default function Sidebar() {
 
   const navItems = user?.isAdmin
     ? [
-        {
-          href: "/dashboard/admin",
-          label: "Admin Home",
-          icon: <Shield size={18} />,
-        },
-        {
-          href: "/dashboard/admin/users",
-          label: "Users",
-          icon: <Users size={18} />,
-        },
-        {
-          href: "/dashboard/admin/students",
-          label: "Students",
-          icon: <GraduationCap size={18} />,
-        },
-        {
-          href: "/dashboard/admin/classes",
-          label: "Classes",
-          icon: <BookOpen size={18} />,
-        },
-        {
-          href: "/dashboard/admin/teachers",
-          label: "Teachers",
-          icon: <Presentation size={18} />,
-        },
-        {
-          href: "/dashboard/admin/rooms",
-          label: "Rooms",
-          icon: <DoorOpen size={18} />,
-        },
-        {
-          href: "/dashboard/admin/cameras",
-          label: "Cameras",
-          icon: <Camera size={18} />,
-        },
-        {
-          href: "/dashboard/admin/sessions",
-          label: "Sessions",
-          icon: <CalendarClock size={18} />,
-        },
+        { href: "/dashboard/admin", label: "Admin Home", icon: <Shield size={18} /> },
+        { href: "/dashboard/admin/users", label: "Users", icon: <Users size={18} /> },
+        { href: "/dashboard/admin/students", label: "Students", icon: <GraduationCap size={18} /> },
+        { href: "/dashboard/admin/classes", label: "Classes", icon: <BookOpen size={18} /> },
+        { href: "/dashboard/admin/teachers", label: "Teachers", icon: <Presentation size={18} /> },
+        { href: "/dashboard/admin/rooms", label: "Rooms", icon: <DoorOpen size={18} /> },
+        { href: "/dashboard/admin/cameras", label: "Cameras", icon: <Camera size={18} /> },
+        { href: "/dashboard/admin/sessions", label: "Sessions", icon: <CalendarClock size={18} /> },
       ]
-    : [
-        {
-          href: "/dashboard",
-          label: "Dashboard",
-          icon: <LayoutDashboard size={18} />,
-        },
-      ];
+    : [{ href: "/dashboard", label: "Dashboard", icon: <LayoutDashboard size={18} /> }];
 
   return (
     <>
@@ -165,7 +125,6 @@ export default function Sidebar() {
           type="button"
           onClick={() => setMobileOpen(true)}
           className="fixed left-4 top-4 z-50 rounded-md border border-gray-200 bg-white p-2 text-gray-700 shadow-md md:hidden dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
-          aria-label="Open menu"
         >
           <Menu size={18} />
         </button>
@@ -176,7 +135,6 @@ export default function Sidebar() {
           type="button"
           onClick={() => setMobileOpen(false)}
           className="fixed inset-0 z-30 bg-black/40 md:hidden"
-          aria-label="Close menu overlay"
         />
       )}
 
@@ -185,6 +143,7 @@ export default function Sidebar() {
           mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         } ${collapsed ? "w-20" : "w-72 md:w-64"}`}
       >
+        {/* Header */}
         <div className="mb-6 flex items-center justify-between">
           {!collapsed && (
             <h1 className="text-xl font-bold text-gray-800 dark:text-white">
@@ -199,32 +158,32 @@ export default function Sidebar() {
             >
               {theme === "light" ? <Moon size={18} /> : <Sun size={18} />}
             </button>
+
             <button
               onClick={() => setCollapsed(!collapsed)}
               className="hidden rounded p-1 hover:bg-gray-200 dark:hover:bg-gray-700 md:block"
             >
-              {collapsed ? (
-                <ChevronRight size={18} />
-              ) : (
-                <ChevronLeft size={18} />
-              )}
+              {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
             </button>
           </div>
         </div>
 
         <hr className="mb-4 border-gray-300 dark:border-gray-700" />
 
+        {/* Navigation */}
         <nav className="flex-1 overflow-y-auto">
           {navItems.map((item) => {
             const isActive =
               pathname === item.href ||
-              (item.href !== "/dashboard" &&
-                pathname.startsWith(`${item.href}/`));
+              (item.href !== "/dashboard" && pathname.startsWith(`${item.href}/`));
+
             return (
               <button
                 key={item.href}
                 onClick={() => handleNavigate(item.href)}
-                className={`mb-2 flex cursor-pointer items-center rounded p-3 transition ${
+                className={`mb-2 w-full flex items-center rounded p-3 transition ${
+                  collapsed ? "justify-center" : "justify-start"
+                } ${
                   isActive
                     ? "bg-blue-500 text-white"
                     : "text-gray-700 hover:bg-gray-200 dark:text-gray-200 dark:hover:bg-gray-700"
@@ -238,78 +197,67 @@ export default function Sidebar() {
             );
           })}
 
+          {/* Camera Button */}
           {!user?.isAdmin && activeSession?.idCamera && (
             <div className="mb-4">
               <hr className="mb-4 border-gray-300 dark:border-gray-700" />
               <button
-                type="button"
                 onClick={toggleCamera}
-                aria-label={
-                  cameraStatus === 1 ? "Stop Camera" : "Activate Camera"
-                }
-                title={cameraStatus === 1 ? "Stop Camera" : "Activate Camera"}
-                className={`rounded font-medium transition ${
+                className={`w-full rounded font-medium transition ${
                   collapsed
-                    ? "mx-auto flex h-10 w-10 items-center justify-center"
-                    : "w-full px-3 py-2 text-sm"
+                    ? "flex h-10 items-center justify-center"
+                    : "px-3 py-2 text-sm"
                 } ${
                   cameraStatus === 1
                     ? "bg-red-600 text-white hover:bg-red-700"
                     : "bg-green-600 text-white hover:bg-green-700"
                 }`}
               >
-                <span
-                  className={`flex items-center justify-center ${collapsed ? "" : "gap-2"}`}
-                >
-                  {cameraStatus === 1 ? (
-                    <VideoOff size={18} />
-                  ) : (
-                    <Video size={18} />
-                  )}
+                <div className={`flex items-center ${collapsed ? "" : "gap-2"}`}>
+                  {cameraStatus === 1 ? <VideoOff size={18} /> : <Video size={18} />}
                   {!collapsed && (
                     <span>
                       {cameraStatus === 1 ? "Stop Camera" : "Activate Camera"}
                     </span>
                   )}
-                </span>
+                </div>
               </button>
             </div>
           )}
         </nav>
 
+        {/* Account */}
         <div className="relative mt-auto">
           <button
-            onClick={(event) => {
-              event.stopPropagation();
+            onClick={(e) => {
+              e.stopPropagation();
               setCollapsed(false);
               setUserMenuOpen((prev) => !prev);
             }}
-            className="w-full rounded p-2 text-gray-700 transition hover:bg-gray-200 dark:text-gray-200 dark:hover:bg-gray-700 flex items-center justify-center gap-3"
+            className="w-full flex items-center justify-center gap-3 rounded p-2 text-gray-700 hover:bg-gray-200 dark:text-gray-200 dark:hover:bg-gray-700"
           >
             <UserCircle2 size={20} />
             {!collapsed && <span className="font-medium">Account</span>}
           </button>
 
           {userMenuOpen && (
-            <button
-              onClick={(event) => event.stopPropagation()}
-              className="absolute bottom-12 left-0 z-20 w-full overflow-hidden rounded-md border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800"
-            >
+            <div className="absolute bottom-12 left-0 w-full rounded-md border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800">
               <button
                 onClick={handleProfile}
-                className="w-full px-3 py-2 text-left flex items-center gap-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                className="w-full flex items-center gap-2 px-3 py-2 text-left text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700"
               >
                 <User size={16} />
-                <span>Profile</span>
+                Profile
               </button>
+
               <button
                 onClick={handleLogout}
-                className="w-full px-3 py-2 text-left flex items-center gap-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                className="w-full flex items-center gap-2 px-3 py-2 text-left text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
               >
                 <LogOut size={16} />
-                <span>Logout</span>
+                Logout
               </button>
-            </button>
+            </div>
           )}
         </div>
       </aside>
