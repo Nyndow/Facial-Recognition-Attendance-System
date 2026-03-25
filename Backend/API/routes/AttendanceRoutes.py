@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
 from config.database import db
 from models.Attendance import Attendance
+from datetime import datetime
 
 attendance_bp = Blueprint("attendance", __name__)
 
@@ -61,3 +62,34 @@ def delete_attendance(attendance_id):
     db.session.delete(a)
     db.session.commit()
     return jsonify({"message": "Attendance deleted"})
+
+@attendance_bp.route("/set-attendance/<int:session_id>", methods=["POST"])
+def set_attendance(session_id):
+    data = request.json or {}
+    student_id = data.get("student_id")
+
+    if not student_id:
+        return jsonify({"error": "No student_id provided"}), 400
+
+    attendance_record = Attendance.query.filter_by(
+        student_id=student_id,
+        class_session_id=session_id
+    ).first()
+
+    if attendance_record:
+        attendance_record.present = True
+        attendance_record.timestamp = datetime.utcnow()
+        db.session.commit()
+        return jsonify({"status": "ok"}), 200
+    else:
+
+        new_record = Attendance(
+            student_id=student_id,
+            class_session_id=session_id,
+            present=True,
+            timestamp=datetime.utcnow()
+        )
+        db.session.add(new_record)
+        db.session.commit()
+        print(f"[ATTENDANCE] Session {session_id} → student {student_id} added and marked present")
+        return jsonify({"status": "ok", "created": True}), 200
