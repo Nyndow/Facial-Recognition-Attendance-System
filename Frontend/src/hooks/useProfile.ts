@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
+import axios from "axios";
 
 export interface CurrentUser {
   id: number;
@@ -34,9 +35,9 @@ export const useCurrentUser = () => {
       await api.put("/me", data);
       await fetchUser();
       alert("Profile updated successfully");
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      if (err.response?.data?.error) {
+      if (axios.isAxiosError(err) && err.response?.data?.error) {
         alert(err.response.data.error);
       } else {
         alert("Failed to update profile");

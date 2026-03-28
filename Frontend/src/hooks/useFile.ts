@@ -1,10 +1,15 @@
 import { useState } from "react";
 import api from "@/lib/api";
+import type { SessionInfo } from "./useSessionInfo";
+import type { StudentInfo } from "./useSessionStudents";
 
 export const useExportAttendance = () => {
   const [loading, setLoading] = useState(false);
 
-  const exportPDF = async (session: any, students: any) => {
+  const exportPDF = async (
+    session: SessionInfo,
+    students: StudentInfo[]
+  ) => {
     if (!session || !students) return;
     setLoading(true);
     try {
