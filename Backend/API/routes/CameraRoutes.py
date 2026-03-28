@@ -16,7 +16,7 @@ def _has_active_session_for_camera(camera_id):
     room_ids = [r.idRoom for r in Room.query.filter_by(idCamera=camera_id).all()]
     if not room_ids:
         return False
-    now = datetime.utcnow()
+    now = datetime.now()
     active_session = ClassSession.query.filter(
         and_(
             ClassSession.idRoom.in_(room_ids),
@@ -27,7 +27,7 @@ def _has_active_session_for_camera(camera_id):
     return active_session is not None
 
 def get_active_session_for_camera(camera_id: int):
-    now = datetime.utcnow()
+    now = datetime.now()
 
     active_session = (
         db.session.query(ClassSession)
@@ -171,4 +171,3 @@ def upload_face():
         file.save(os.path.join(save_dir, file.filename))
         return "OK", 200
     return "No file", 400
-
