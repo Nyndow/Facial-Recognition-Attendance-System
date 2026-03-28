@@ -42,21 +42,21 @@ function DashboardContent() {
                   <button
                     key={session.id}
                     onClick={() => handleClick(session.id)}
-                    className="cursor-pointer rounded-lg border bg-white p-4 shadow transition-shadow hover:border-blue-200 hover:shadow-lg dark:bg-gray-800 dark:hover:border-blue-400/40"
+                    className="cursor-pointer rounded-lg border bg-white p-4 shadow transition-shadow hover:border-blue-200 hover:shadow-lg dark:bg-slate-800 dark:hover:border-blue-400/40"
                   >
                     <h3 className="mb-2 text-lg font-semibold sm:text-xl">
                       {session.subject}
                     </h3>
-                    <p className="mb-1 text-sm text-gray-600 dark:text-gray-300 sm:text-base">
+                    <p className="mb-1 text-sm text-gray-600 dark:text-slate-300 sm:text-base">
                       Class: {session.class_name || "N/A"}
                     </p>
-                    <p className="mb-1 text-sm text-gray-600 dark:text-gray-300 sm:text-base">
+                    <p className="mb-1 text-sm text-gray-600 dark:text-slate-300 sm:text-base">
                       Room: {session.room}
                     </p>
-                    <p className="mb-1 text-sm text-gray-600 dark:text-gray-300 sm:text-base">
+                    <p className="mb-1 text-sm text-gray-600 dark:text-slate-300 sm:text-base">
                       Teacher: {session.teacher_name || "N/A"}
                     </p>
-                    <p className="text-sm text-gray-600 dark:text-gray-300 sm:text-base">
+                    <p className="text-sm text-gray-600 dark:text-slate-300 sm:text-base">
                       Start Time: {format(new Date(session.time), "PPPp")} -{" "}
                       {format(new Date(session.endSession), "PPPp")}
                     </p>
@@ -67,7 +67,7 @@ function DashboardContent() {
           </section>
 
           <section>
-            <hr className="mb-4 border-gray-300 dark:border-gray-700" />
+            <hr className="mb-4 border-gray-300 dark:border-slate-700" />
             <h2 className="mb-4 text-xl font-semibold sm:text-2xl">Other Sessions</h2>
             {otherSessions.length === 0 ? (
               <p>No other sessions scheduled.</p>
@@ -78,21 +78,21 @@ function DashboardContent() {
                   <button
                     key={session.id}
                     onClick={() => handleClick(session.id)}
-                    className="cursor-pointer rounded-lg border bg-white p-4 shadow transition-shadow hover:border-blue-200 hover:shadow-lg dark:bg-gray-800 dark:hover:border-blue-400/40"
+                    className="cursor-pointer rounded-lg border bg-white p-4 shadow transition-shadow hover:border-blue-200 hover:shadow-lg dark:bg-slate-800 dark:hover:border-blue-400/40"
                   >
                     <h3 className="mb-2 text-lg font-semibold sm:text-xl">
                       {session.subject}
                     </h3>
-                    <p className="mb-1 text-sm text-gray-600 dark:text-gray-300 sm:text-base">
+                    <p className="mb-1 text-sm text-gray-600 dark:text-slate-300 sm:text-base">
                       Class: {session.class_name || "N/A"}
                     </p>
-                    <p className="mb-1 text-sm text-gray-600 dark:text-gray-300 sm:text-base">
+                    <p className="mb-1 text-sm text-gray-600 dark:text-slate-300 sm:text-base">
                       Room: {session.room}
                     </p>
-                    <p className="mb-1 text-sm text-gray-600 dark:text-gray-300 sm:text-base">
+                    <p className="mb-1 text-sm text-gray-600 dark:text-slate-300 sm:text-base">
                       Teacher: {session.teacher_name || "N/A"}
                     </p>
-                    <p className="text-sm text-gray-600 dark:text-gray-300 sm:text-base">
+                    <p className="text-sm text-gray-600 dark:text-slate-300 sm:text-base">
                       Start Time: {format(new Date(session.time), "PPPp")} -{" "}
                       {format(new Date(session.endSession), "PPPp")}
                     </p>

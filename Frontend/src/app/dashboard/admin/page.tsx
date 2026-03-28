@@ -19,7 +19,7 @@ export default function AdminDashboardPage() {
     <Protected adminOnly>
       <div className="mx-auto max-w-6xl p-4 sm:p-6">
         <h1 className="mb-2 text-2xl font-bold sm:text-3xl">Admin CRUD</h1>
-        <p className="mb-6 text-sm text-gray-600 dark:text-gray-300 sm:text-base">
+        <p className="mb-6 text-sm text-gray-600 dark:text-slate-300 sm:text-base">
           Admin accounts access CRUD management pages only.
         </p>
 
@@ -28,10 +28,10 @@ export default function AdminDashboardPage() {
             <Link
               key={section.href}
               href={section.href}
-              className="rounded-lg border bg-white p-4 shadow-sm transition hover:shadow-md dark:bg-gray-800"
+              className="rounded-lg border bg-white p-4 shadow-sm transition hover:shadow-md dark:bg-slate-800"
             >
               <h2 className="mb-1 text-lg font-semibold sm:text-xl">{section.title}</h2>
-              <p className="text-sm text-gray-600 dark:text-gray-300">{section.description}</p>
+              <p className="text-sm text-gray-600 dark:text-slate-300">{section.description}</p>
             </Link>
           ))}
         </div>

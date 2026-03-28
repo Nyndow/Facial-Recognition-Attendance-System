@@ -18,7 +18,7 @@ export default function LoadingSpinner({
       aria-live="polite"
     >
       <span className="h-5 w-5 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
-      <span className="text-sm text-gray-600 dark:text-gray-300">{label}</span>
+      <span className="text-sm text-gray-600 dark:text-slate-300">{label}</span>
     </div>
   );
 }

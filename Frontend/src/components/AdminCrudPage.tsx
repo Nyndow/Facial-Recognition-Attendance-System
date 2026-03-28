@@ -295,7 +295,7 @@ export default function AdminCrudPage({
               value={toStringValue(form[field.key])}
               onChange={(e) => setFieldValue(field, e.target.value)}
               required={Boolean(field.required || (isCreate && field.requiredOnCreate))}
-              className="w-full rounded border p-2 dark:bg-gray-700 dark:text-white"
+              className="w-full rounded border p-2 dark:bg-slate-700 dark:text-white"
             >
               <option value="">{field.optionPlaceholder ?? "Select an option"}</option>
               {(field.options ?? []).map((option) => (
@@ -311,7 +311,7 @@ export default function AdminCrudPage({
               onChange={(e) => setFieldValue(field, e.target.value)}
               placeholder={field.placeholder}
               required={Boolean(field.required || (isCreate && field.requiredOnCreate))}
-              className="w-full rounded border p-2 dark:bg-gray-700 dark:text-white"
+              className="w-full rounded border p-2 dark:bg-slate-700 dark:text-white"
             />
           )}
         </label>
@@ -328,7 +328,7 @@ export default function AdminCrudPage({
           <button
             type="button"
             onClick={resetForm}
-            className="rounded border px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700"
+            className="rounded border px-4 py-2 hover:bg-gray-100 dark:hover:bg-slate-700"
           >
             Cancel Edit
           </button>
@@ -353,14 +353,14 @@ export default function AdminCrudPage({
 
       {createModalOpen && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
-          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg border bg-white p-5 shadow-lg dark:bg-gray-800">
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg border bg-white p-5 shadow-lg dark:bg-slate-800">
             <div className="mb-4 flex items-center justify-between gap-3">
               <h2 className="text-lg font-semibold">Create {title}</h2>
               <button
                 type="button"
                 onClick={() => setCreateModalOpen(false)}
                 aria-label="Close create modal"
-                className="inline-flex h-9 w-9 items-center justify-center rounded border hover:bg-gray-100 dark:hover:bg-gray-700"
+                className="inline-flex h-9 w-9 items-center justify-center rounded border hover:bg-gray-100 dark:hover:bg-slate-700"
               >
                 <X size={16} />
               </button>
@@ -372,14 +372,14 @@ export default function AdminCrudPage({
 
       {editingId !== null && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
-          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg border bg-white p-5 shadow-lg dark:bg-gray-800">
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg border bg-white p-5 shadow-lg dark:bg-slate-800">
             <div className="mb-4 flex items-center justify-between gap-3">
               <h2 className="text-lg font-semibold">Update {title}</h2>
               <button
                 type="button"
                 onClick={resetForm}
                 aria-label="Close update modal"
-                className="inline-flex h-9 w-9 items-center justify-center rounded border hover:bg-gray-100 dark:hover:bg-gray-700"
+                className="inline-flex h-9 w-9 items-center justify-center rounded border hover:bg-gray-100 dark:hover:bg-slate-700"
               >
                 <X size={16} />
               </button>
@@ -391,9 +391,9 @@ export default function AdminCrudPage({
 
       {pendingDeleteId !== null && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-lg border bg-white p-5 shadow-lg dark:bg-gray-800">
+          <div className="w-full max-w-md rounded-lg border bg-white p-5 shadow-lg dark:bg-slate-800">
             <h2 className="text-lg font-semibold">Confirm Delete</h2>
-            <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+            <p className="mt-2 text-sm text-gray-600 dark:text-slate-300">
               Delete this {title.toLowerCase()} entry? This action cannot be undone.
             </p>
             <div className="mt-4 flex gap-3">
@@ -407,7 +407,7 @@ export default function AdminCrudPage({
               <button
                 type="button"
                 onClick={() => setPendingDeleteId(null)}
-                className="rounded border px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700"
+                className="rounded border px-4 py-2 hover:bg-gray-100 dark:hover:bg-slate-700"
               >
                 Cancel
               </button>
@@ -416,7 +416,7 @@ export default function AdminCrudPage({
         </div>
       )}
 
-      <div className="rounded-lg border bg-white p-4 shadow-sm dark:bg-gray-800 sm:p-5">
+      <div className="rounded-lg border bg-white p-4 shadow-sm dark:bg-slate-800 sm:p-5">
         <h2 className="mb-4 text-lg font-semibold">{title} List</h2>
         {loading ? (
           <LoadingSpinner label={`Loading ${title.toLowerCase()}...`} />
@@ -425,7 +425,7 @@ export default function AdminCrudPage({
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full overflow-hidden rounded-lg border text-sm sm:text-base">
-              <thead className="bg-gray-100 dark:bg-gray-700">
+              <thead className="bg-gray-100 dark:bg-slate-700">
                 <tr>
                   {columns.map((column) => (
                     <th key={column.key} className="px-3 py-2 text-left sm:px-4">
@@ -453,7 +453,7 @@ export default function AdminCrudPage({
                         <button
                           type="button"
                           onClick={() => handleEdit(row)}
-                          className="inline-flex items-center justify-center rounded border p-1 text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
+                          className="inline-flex items-center justify-center rounded border p-1 text-sm hover:bg-gray-100 dark:hover:bg-slate-700"
                           aria-label="Edit"
                         >
                           <Edit size={16} />

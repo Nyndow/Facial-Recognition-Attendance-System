@@ -30,12 +30,12 @@ export default function ProfilePage() {
   return (
     <Protected>
       <div className="flex min-h-screen items-center justify-center p-4">
-        <div className="w-full max-w-md space-y-4 rounded-lg bg-white p-5 shadow dark:bg-gray-800 sm:p-6">
+        <div className="w-full max-w-md space-y-4 rounded-lg bg-white p-5 shadow dark:bg-slate-800 sm:p-6">
           <button
             type="button"
             onClick={() => router.back()}
             aria-label="Go back"
-            className="inline-flex h-9 w-9 items-center justify-center rounded-md text-blue-600 transition hover:bg-blue-50 hover:text-blue-700 dark:text-blue-400 dark:hover:bg-gray-700 dark:hover:text-blue-300"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-md text-blue-600 transition hover:bg-blue-50 hover:text-blue-700 dark:text-blue-400 dark:hover:bg-slate-700 dark:hover:text-blue-300"
           >
             <ArrowLeft size={18} />
           </button>
@@ -43,24 +43,24 @@ export default function ProfilePage() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="mb-1 block text-gray-700 dark:text-gray-200">Username</label>
+              <label className="mb-1 block text-gray-700 dark:text-slate-200">Username</label>
               <input
                 type="text"
                 value={username ?? user.username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="w-full rounded border p-2 dark:bg-gray-700 dark:text-white"
+                className="w-full rounded border p-2 dark:bg-slate-700 dark:text-white"
                 required
               />
             </div>
 
             <div>
-              <label className="mb-1 block text-gray-700 dark:text-gray-200">Password</label>
+              <label className="mb-1 block text-gray-700 dark:text-slate-200">Password</label>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Leave blank to keep current"
-                className="w-full rounded border p-2 dark:bg-gray-700 dark:text-white"
+                className="w-full rounded border p-2 dark:bg-slate-700 dark:text-white"
               />
             </div>
 
@@ -75,7 +75,7 @@ export default function ProfilePage() {
             </button>
           </form>
 
-          <div className="pt-2 text-gray-600 dark:text-gray-300">
+          <div className="pt-2 text-gray-600 dark:text-slate-300">
             <p>
               <span className="font-semibold">Role:</span> {user.isAdmin ? "Admin" : "User"}
             </p>

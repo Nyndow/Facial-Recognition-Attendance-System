@@ -25,7 +25,7 @@ function SessionInfoContent() {
       ) : !session ? (
         <p>Session not found.</p>
       ) : (
-        <div className="space-y-4 rounded-lg border bg-white p-4 shadow dark:bg-gray-800 sm:p-6">
+        <div className="space-y-4 rounded-lg border bg-white p-4 shadow dark:bg-slate-800 sm:p-6">
           <h2 className="text-xl font-semibold sm:text-2xl">{session.subject}</h2>
           <p>
             <span className="font-medium">Class:</span> {session.class_name || "N/A"}
@@ -65,7 +65,7 @@ function SessionInfoContent() {
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full overflow-hidden rounded-lg border text-sm sm:text-base">
-              <thead className="bg-gray-100 dark:bg-gray-700">
+              <thead className="bg-gray-100 dark:bg-slate-700">
                 <tr>
                   <th className="px-3 py-2 text-left sm:px-4">Matricule</th>
                   <th className="px-3 py-2 text-left sm:px-4">Name</th>
@@ -74,7 +74,7 @@ function SessionInfoContent() {
               </thead>
               <tbody>
                 {students.map((s) => (
-                  <tr key={s.id} className="border-b hover:bg-gray-50 dark:hover:bg-gray-600">
+                  <tr key={s.id} className="border-b hover:bg-gray-50 dark:hover:bg-slate-600">
                     <td className="px-3 py-2 sm:px-4">{s.matricule}</td>
                     <td className="px-3 py-2 sm:px-4">{s.name}</td>
                     <td className="px-3 py-2 sm:px-4">

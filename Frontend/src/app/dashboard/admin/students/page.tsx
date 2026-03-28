@@ -250,7 +250,7 @@ export default function AdminStudentsPage() {
           value={form.name}
           onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
           required
-          className="w-full rounded border p-2 dark:bg-gray-700 dark:text-white"
+          className="w-full rounded border p-2 dark:bg-slate-700 dark:text-white"
         />
       </label>
 
@@ -261,7 +261,7 @@ export default function AdminStudentsPage() {
           value={form.matricule}
           onChange={(e) => setForm((prev) => ({ ...prev, matricule: e.target.value }))}
           required
-          className="w-full rounded border p-2 dark:bg-gray-700 dark:text-white"
+          className="w-full rounded border p-2 dark:bg-slate-700 dark:text-white"
         />
       </label>
 
@@ -270,7 +270,7 @@ export default function AdminStudentsPage() {
         <select
           value={form.class_id}
           onChange={(e) => setForm((prev) => ({ ...prev, class_id: e.target.value }))}
-          className="w-full rounded border p-2 dark:bg-gray-700 dark:text-white"
+          className="w-full rounded border p-2 dark:bg-slate-700 dark:text-white"
         >
           <option value="">No class</option>
           {classes.map((classItem) => (
@@ -293,7 +293,7 @@ export default function AdminStudentsPage() {
             <button
               type="button"
               onClick={startCamera}
-              className="rounded border px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
+              className="rounded border px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-slate-700"
             >
               Start Camera
             </button>
@@ -301,7 +301,7 @@ export default function AdminStudentsPage() {
             <button
               type="button"
               onClick={stopCamera}
-              className="rounded border px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
+              className="rounded border px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-slate-700"
             >
               Stop Camera
             </button>
@@ -310,7 +310,7 @@ export default function AdminStudentsPage() {
             type="button"
             onClick={captureFace}
             disabled={!cameraOn}
-            className="rounded border px-3 py-2 text-sm hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60 dark:hover:bg-gray-700"
+            className="rounded border px-3 py-2 text-sm hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60 dark:hover:bg-slate-700"
           >
             Capture Face
           </button>
@@ -318,7 +318,7 @@ export default function AdminStudentsPage() {
             <button
               type="button"
               onClick={() => setCapturedImage("")}
-              className="rounded border px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
+              className="rounded border px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-slate-700"
             >
               Clear Capture
             </button>
@@ -326,7 +326,7 @@ export default function AdminStudentsPage() {
         </div>
         {capturedImage && (
           <div>
-            <p className="mb-2 text-sm text-gray-600 dark:text-gray-300">Captured preview:</p>
+            <p className="mb-2 text-sm text-gray-600 dark:text-slate-300">Captured preview:</p>
             <Image
               src={capturedImage}
               alt="Captured face preview"
@@ -351,7 +351,7 @@ export default function AdminStudentsPage() {
           <button
             type="button"
             onClick={resetForm}
-            className="rounded border px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700"
+            className="rounded border px-4 py-2 hover:bg-gray-100 dark:hover:bg-slate-700"
           >
             Cancel Edit
           </button>
@@ -377,7 +377,7 @@ export default function AdminStudentsPage() {
 
         {createModalOpen && (
           <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
-            <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-lg border bg-white p-5 shadow-lg dark:bg-gray-800">
+            <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-lg border bg-white p-5 shadow-lg dark:bg-slate-800">
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="text-lg font-semibold">Create Student</h2>
                 <button
@@ -387,7 +387,7 @@ export default function AdminStudentsPage() {
                     stopCamera();
                   }}
                   aria-label="Close create modal"
-                  className="inline-flex h-9 w-9 items-center justify-center rounded border hover:bg-gray-100 dark:hover:bg-gray-700"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded border hover:bg-gray-100 dark:hover:bg-slate-700"
                 >
                   <X size={16} />
                 </button>
@@ -399,14 +399,14 @@ export default function AdminStudentsPage() {
 
         {editingId !== null && (
           <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
-            <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-lg border bg-white p-5 shadow-lg dark:bg-gray-800">
+            <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-lg border bg-white p-5 shadow-lg dark:bg-slate-800">
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="text-lg font-semibold">Update Student</h2>
                 <button
                   type="button"
                   onClick={resetForm}
                   aria-label="Close update modal"
-                  className="inline-flex h-9 w-9 items-center justify-center rounded border hover:bg-gray-100 dark:hover:bg-gray-700"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded border hover:bg-gray-100 dark:hover:bg-slate-700"
                 >
                   <X size={16} />
                 </button>
@@ -418,9 +418,9 @@ export default function AdminStudentsPage() {
 
         {pendingDeleteStudent && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-            <div className="w-full max-w-md rounded-lg border bg-white p-5 shadow-lg dark:bg-gray-800">
+            <div className="w-full max-w-md rounded-lg border bg-white p-5 shadow-lg dark:bg-slate-800">
               <h2 className="text-lg font-semibold">Confirm Delete</h2>
-              <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+              <p className="mt-2 text-sm text-gray-600 dark:text-slate-300">
                 Delete student {pendingDeleteStudent.name}? This action cannot be undone.
               </p>
               <div className="mt-4 flex gap-3">
@@ -434,7 +434,7 @@ export default function AdminStudentsPage() {
                 <button
                   type="button"
                   onClick={() => setPendingDeleteStudent(null)}
-                  className="rounded border px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  className="rounded border px-4 py-2 hover:bg-gray-100 dark:hover:bg-slate-700"
                 >
                   Cancel
                 </button>
@@ -443,7 +443,7 @@ export default function AdminStudentsPage() {
           </div>
         )}
 
-        <div className="rounded-lg border bg-white p-4 shadow-sm dark:bg-gray-800 sm:p-5">
+        <div className="rounded-lg border bg-white p-4 shadow-sm dark:bg-slate-800 sm:p-5">
           <h2 className="mb-4 text-lg font-semibold">Students List</h2>
           {loading ? (
             <LoadingSpinner label="Loading students..." />
@@ -452,7 +452,7 @@ export default function AdminStudentsPage() {
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full overflow-hidden rounded-lg border text-sm sm:text-base">
-                <thead className="bg-gray-100 dark:bg-gray-700">
+                <thead className="bg-gray-100 dark:bg-slate-700">
                   <tr>
                     <th className="px-3 py-2 text-left sm:px-4">Name</th>
                     <th className="px-3 py-2 text-left sm:px-4">Matricule</th>
@@ -473,7 +473,7 @@ export default function AdminStudentsPage() {
                           <button
                             type="button"
                             onClick={() => openEditForm(student)}
-                            className="rounded border px-2 py-1 text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
+                            className="rounded border px-2 py-1 text-sm hover:bg-gray-100 dark:hover:bg-slate-700"
                           >
                             Edit
                           </button>

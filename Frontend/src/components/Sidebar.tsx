@@ -26,6 +26,7 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useSessions } from "@/hooks/useSessions";
 import { useCameraStatus } from "@/hooks/useCameraStatus";
+import { useTheme } from "@/hooks/useTheme";
 
 export default function Sidebar() {
   const router = useRouter();
@@ -33,7 +34,7 @@ export default function Sidebar() {
   const { user } = useAuth();
   const { sessions } = useSessions();
 
-  const [theme, setTheme] = useState<"light" | "dark">("light");
+  const { theme, toggleTheme } = useTheme();
   const [collapsed, setCollapsed] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -59,16 +60,6 @@ export default function Sidebar() {
   );
 
   useEffect(() => {
-    if (theme === "dark") {
-      document.documentElement.classList.add("dark");
-      localStorage.setItem("theme", "dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-      localStorage.setItem("theme", "light");
-    }
-  }, [theme]);
-
-  useEffect(() => {
     const timer = window.setInterval(() => {
       setNow(new Date());
     }, 30000);
@@ -83,10 +74,6 @@ export default function Sidebar() {
     document.addEventListener("click", handleDocumentClick);
     return () => document.removeEventListener("click", handleDocumentClick);
   }, [userMenuOpen]);
-
-  const toggleTheme = () => {
-    setTheme((prev) => (prev === "light" ? "dark" : "light"));
-  };
 
   const handleNavigate = (href: string) => {
     setMobileOpen(false);
@@ -124,7 +111,7 @@ export default function Sidebar() {
         <button
           type="button"
           onClick={() => setMobileOpen(true)}
-          className="fixed left-4 top-4 z-50 rounded-md border border-gray-200 bg-white p-2 text-gray-700 shadow-md md:hidden dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
+          className="fixed left-4 top-4 z-50 rounded-md border border-gray-200 bg-white p-2 text-gray-700 shadow-md md:hidden dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
         >
           <Menu size={18} />
         </button>
@@ -139,7 +126,7 @@ export default function Sidebar() {
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-40 flex h-screen flex-col bg-gray-100 p-4 transition-all duration-300 dark:bg-gray-900 md:sticky md:top-0 ${
+        className={`fixed inset-y-0 left-0 z-40 flex h-screen flex-col bg-gray-100 p-4 transition-all duration-300 dark:bg-slate-900 md:sticky md:top-0 ${
           mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         } ${collapsed ? "w-20" : "w-72 md:w-64"}`}
       >
@@ -154,21 +141,21 @@ export default function Sidebar() {
           <div className="flex items-center space-x-2">
             <button
               onClick={toggleTheme}
-              className="rounded p-1 hover:bg-gray-200 dark:hover:bg-gray-700"
+              className="rounded p-1 hover:bg-gray-200 dark:hover:bg-slate-700"
             >
               {theme === "light" ? <Moon size={18} /> : <Sun size={18} />}
             </button>
 
             <button
               onClick={() => setCollapsed(!collapsed)}
-              className="hidden rounded p-1 hover:bg-gray-200 dark:hover:bg-gray-700 md:block"
+              className="hidden rounded p-1 hover:bg-gray-200 dark:hover:bg-slate-700 md:block"
             >
               {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
             </button>
           </div>
         </div>
 
-        <hr className="mb-4 border-gray-300 dark:border-gray-700" />
+        <hr className="mb-4 border-gray-300 dark:border-slate-700" />
 
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto">
@@ -186,7 +173,7 @@ export default function Sidebar() {
                 } ${
                   isActive
                     ? "bg-blue-500 text-white"
-                    : "text-gray-700 hover:bg-gray-200 dark:text-gray-200 dark:hover:bg-gray-700"
+                    : "text-gray-700 hover:bg-gray-200 dark:text-slate-200 dark:hover:bg-slate-700"
                 }`}
               >
                 <span className="shrink-0">{item.icon}</span>
@@ -200,7 +187,7 @@ export default function Sidebar() {
           {/* Camera Button */}
           {!user?.isAdmin && activeSession?.idCamera && (
             <div className="mb-4">
-              <hr className="mb-4 border-gray-300 dark:border-gray-700" />
+              <hr className="mb-4 border-gray-300 dark:border-slate-700" />
               <button
                 onClick={toggleCamera}
                 className={`w-full rounded font-medium transition ${
@@ -234,17 +221,17 @@ export default function Sidebar() {
               setCollapsed(false);
               setUserMenuOpen((prev) => !prev);
             }}
-            className="w-full flex items-center justify-center gap-3 rounded p-2 text-gray-700 hover:bg-gray-200 dark:text-gray-200 dark:hover:bg-gray-700"
+            className="w-full flex items-center justify-center gap-3 rounded p-2 text-gray-700 hover:bg-gray-200 dark:text-slate-200 dark:hover:bg-slate-700"
           >
             <UserCircle2 size={20} />
             {!collapsed && <span className="font-medium">Account</span>}
           </button>
 
           {userMenuOpen && (
-            <div className="absolute bottom-12 left-0 w-full rounded-md border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800">
+            <div className="absolute bottom-12 left-0 w-full rounded-md border border-gray-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-800">
               <button
                 onClick={handleProfile}
-                className="w-full flex items-center gap-2 px-3 py-2 text-left text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700"
+                className="w-full flex items-center gap-2 px-3 py-2 text-left text-gray-700 hover:bg-gray-100 dark:text-slate-200 dark:hover:bg-slate-700"
               >
                 <User size={16} />
                 Profile
