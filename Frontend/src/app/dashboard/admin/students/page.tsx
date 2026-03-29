@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AxiosError } from "axios";
 import Image from "next/image";
 import { X } from "lucide-react";
@@ -41,9 +41,11 @@ export default function AdminStudentsPage() {
   const [pendingDeleteStudent, setPendingDeleteStudent] = useState<StudentRow | null>(null);
   const [cameraOn, setCameraOn] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string>("");
+  const [selectedImageFileName, setSelectedImageFileName] = useState<string>("");
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const showToast = useCallback((type: ToastType, message: string) => {
     const id = Date.now() + Math.floor(Math.random() * 1000);
@@ -158,13 +160,44 @@ export default function AdminStudentsPage() {
     }
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     setCapturedImage(canvas.toDataURL("image/jpeg", 0.9));
+    setSelectedImageFileName("");
     showToast("success", "Face captured successfully.");
+  };
+
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    if (!file.type.startsWith("image/")) {
+      showToast("error", "Please select a valid image file.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result;
+      if (typeof result === "string") {
+        setCapturedImage(result);
+        setSelectedImageFileName(file.name);
+        showToast("success", "Image loaded from file.");
+      }
+    };
+    reader.onerror = () => {
+      showToast("error", "Failed to load image file.");
+    };
+    reader.readAsDataURL(file);
   };
 
   const resetForm = () => {
     setForm(initialForm);
     setEditingId(null);
     setCapturedImage("");
+    setSelectedImageFileName("");
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
     stopCamera();
   };
 
@@ -283,7 +316,7 @@ export default function AdminStudentsPage() {
 
       <div className="space-y-3 md:col-span-2">
         <p className="text-sm font-medium">
-          Face Capture {isCreate ? "*" : "(optional, capture to replace existing face)"}
+          Face Capture {isCreate ? "*" : "(optional, capture or upload to replace existing face)"}
         </p>
         <div className="overflow-hidden rounded-lg border bg-black">
           <video ref={videoRef} className="aspect-video w-full object-cover" muted playsInline />
@@ -317,11 +350,34 @@ export default function AdminStudentsPage() {
           {capturedImage && (
             <button
               type="button"
-              onClick={() => setCapturedImage("")}
+              onClick={() => {
+                setCapturedImage("");
+                setSelectedImageFileName("");
+                if (fileInputRef.current) {
+                  fileInputRef.current.value = "";
+                }
+              }}
               className="rounded border px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-slate-700"
             >
               Clear Capture
             </button>
+          )}
+        </div>
+        <div className="flex flex-col gap-2">
+          <label className="flex flex-col gap-1">
+            <span className="text-sm font-medium">Upload Face Image</span>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleFileChange}
+              className="w-full rounded border p-2 text-sm dark:bg-slate-700 dark:text-white"
+            />
+          </label>
+          {selectedImageFileName && (
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              Selected file: {selectedImageFileName}
+            </p>
           )}
         </div>
         {capturedImage && (
