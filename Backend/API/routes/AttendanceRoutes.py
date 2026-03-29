@@ -78,7 +78,7 @@ def set_attendance(session_id):
 
     if attendance_record:
         attendance_record.present = True
-        attendance_record.timestamp = datetime.utcnow()
+        attendance_record.timestamp = datetime.now()
         db.session.commit()
         return jsonify({"status": "ok"}), 200
     else:
@@ -87,7 +87,7 @@ def set_attendance(session_id):
             student_id=student_id,
             class_session_id=session_id,
             present=True,
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now()
         )
         db.session.add(new_record)
         db.session.commit()
