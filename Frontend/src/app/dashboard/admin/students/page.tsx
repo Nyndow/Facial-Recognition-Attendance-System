@@ -363,6 +363,7 @@ export default function AdminStudentsPage() {
             </button>
           )}
         </div>
+        <p>Or</p>
         <div className="flex flex-col gap-2">
           <label className="flex flex-col gap-1">
             <span className="text-sm font-medium">Upload Face Image</span>
