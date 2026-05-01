@@ -1,23 +1,35 @@
-from flask import Flask, request, jsonify
-import threading
+import time
 import base64
-import numpy as np
+import threading
+
 import cv2
-from core import run_detection, stop_detection, is_running, extract_embedding_from_array, init_yolo, compare_embeddings
+import numpy as np
+from flask import Flask, request, jsonify
+
+from core import (
+    run_detection,
+    stop_detection,
+    is_running,
+    get_latest_frame,
+    extract_embedding_from_array,
+    init_yolo,
+    compare_embeddings,
+)
 from config.config import parse_args
 
-app = Flask(__name__)
+#  App & one-time setup
+app  = Flask(__name__)
 args = parse_args()
 init_yolo(args.model)
-SIMILARITY_THRESHOLD = 0.7
 
+SIMILARITY_THRESHOLD = 0.7
+WINDOW_NAME          = "Face Detection"
+
+#  Routes
 @app.route("/start", methods=["POST"])
 def start():
-    if is_running():
-        return jsonify({"error": "Detection already running"}), 400
-
-    data = request.json or {}
-    session_id = data.get("session_id")
+    data           = request.json or {}
+    session_id     = data.get("session_id")
     embeddings_data = data.get("embeddings")
 
     if not session_id:
@@ -25,18 +37,33 @@ def start():
     if not embeddings_data or not isinstance(embeddings_data, list):
         return jsonify({"error": "Missing or invalid embeddings"}), 400
 
-    embedding_ids = []
+    if is_running():
+        print("[RESTART] Detection already running — stopping previous session...")
+        stop_detection()
+
+        timeout = 10
+        elapsed = 0.0
+        while is_running() and elapsed < timeout:
+            time.sleep(0.1)
+            elapsed += 0.1
+
+        if is_running():
+            return jsonify({"error": "Failed to stop previous session in time"}), 500
+
+        print("[RESTART] Previous session stopped. Starting new session...")
+
+    embedding_ids  = []
     embedding_list = []
     for e in embeddings_data:
         if "id" not in e or "embedding" not in e:
             continue
         embedding_ids.append(e["id"])
-        emb_array = np.array(e["embedding"], dtype=np.float32)
-        embedding_list.append(emb_array)
+        embedding_list.append(np.array(e["embedding"], dtype=np.float32))
 
     thread = threading.Thread(
         target=run_detection,
-        args=(session_id, args, embedding_list, embedding_ids)
+        args=(session_id, args, embedding_list, embedding_ids),
+        daemon=True,
     )
     thread.start()
 
@@ -66,8 +93,8 @@ def extract_embedding_route():
 
     try:
         img_bytes = base64.b64decode(image_data)
-        np_arr = np.frombuffer(img_bytes, np.uint8)
-        img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+        np_arr    = np.frombuffer(img_bytes, np.uint8)
+        img       = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
     except Exception as e:
         return jsonify({"error": f"Failed to decode image: {str(e)}"}), 400
 
@@ -87,5 +114,43 @@ def extract_embedding_route():
 
     return jsonify({"embedding": emb.tolist()})
 
+
+def main_display_loop() -> None:
+    window_open = False
+
+    while True:
+        frame = get_latest_frame()
+
+        if frame is not None:
+            if not window_open:
+                cv2.namedWindow(WINDOW_NAME, cv2.WINDOW_NORMAL)
+                window_open = True
+
+            cv2.imshow(WINDOW_NAME, frame)
+
+            if cv2.waitKey(1) & 0xFF == ord("q"):
+                stop_detection()
+
+        else:
+            if window_open:
+                cv2.destroyWindow(WINDOW_NAME)
+                window_open = False
+
+            cv2.waitKey(50)
+
+        time.sleep(0.005)
+
+
 if __name__ == "__main__":
-    app.run(port=5002, debug=True)
+    flask_thread = threading.Thread(
+        target=lambda: app.run(
+            host="0.0.0.0",
+            port=5002,
+            debug=True,
+            use_reloader=False,   # critical
+        ),
+        daemon=True,
+        name="flask-server",
+    )
+    flask_thread.start()
+    main_display_loop()
