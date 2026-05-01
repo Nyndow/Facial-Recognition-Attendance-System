@@ -53,7 +53,7 @@ export default function Sidebar() {
     );
   }, [now, sessions, user?.isAdmin]);
 
-  const { cameraStatus, toggleCamera } = useCameraStatus(
+  const { cameraStatus, toggleCamera, isUpdating } = useCameraStatus(
     activeSession?.idCamera,
     {
       refreshKey: activeSession?.id,
@@ -192,6 +192,7 @@ export default function Sidebar() {
               <hr className="mb-4 border-gray-300 dark:border-slate-700" />
               <button
                 onClick={toggleCamera}
+                disabled={isUpdating}
                 className={`w-full rounded font-medium transition ${
                   collapsed
                     ? "flex h-10 items-center justify-center"
@@ -200,13 +201,17 @@ export default function Sidebar() {
                   cameraStatus === 1
                     ? "bg-red-600 text-white hover:bg-red-700"
                     : "bg-green-600 text-white hover:bg-green-700"
-                }`}
+                } disabled:cursor-not-allowed disabled:opacity-60`}
               >
                 <div className={`flex items-center ${collapsed ? "" : "gap-2"}`}>
                   {cameraStatus === 1 ? <VideoOff size={18} /> : <Video size={18} />}
                   {!collapsed && (
                     <span>
-                      {cameraStatus === 1 ? "Stop Camera" : "Activate Camera"}
+                      {isUpdating
+                        ? "Updating..."
+                        : cameraStatus === 1
+                          ? "Stop Camera"
+                          : "Activate Camera"}
                     </span>
                   )}
                 </div>

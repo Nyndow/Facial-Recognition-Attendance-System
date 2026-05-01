@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import api from "@/lib/api";
 
 export interface SessionInfo {
@@ -18,8 +18,12 @@ export const useSessionInfo = (sessionId: number | null) => {
   const [session, setSession] = useState<SessionInfo | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchSession = async () => {
-    if (!sessionId) return;
+  const fetchSession = useCallback(async () => {
+    if (!sessionId) {
+      setSession(null);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const res = await api.get(`/sessions/by-session/${sessionId}`);
@@ -30,11 +34,11 @@ export const useSessionInfo = (sessionId: number | null) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [sessionId]);
 
   useEffect(() => {
     fetchSession();
-  }, [sessionId]);
+  }, [fetchSession]);
 
   return { session, loading, fetchSession };
 };

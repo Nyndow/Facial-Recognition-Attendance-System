@@ -1,7 +1,9 @@
 from flask import Blueprint, request, jsonify
 import os
+import time
 from datetime import datetime
 from sqlalchemy import and_
+import requests
 from config.database import db
 from models.Camera import Camera
 from models.Room import Room
@@ -45,6 +47,24 @@ def _serialize_camera(camera):
         "nameCamera": camera.nameCamera,
         "urlCamera": camera.urlCamera
     }
+
+
+def _wait_for_detector_state(expected_status, timeout_seconds=5.0, interval_seconds=0.2):
+    deadline = time.time() + timeout_seconds
+
+    while time.time() < deadline:
+        try:
+            res = requests.get("http://127.0.0.1:5002/health", timeout=2)
+            if res.status_code == 200:
+                status = res.json().get("status")
+                if status == expected_status:
+                    return True
+        except Exception:
+            pass
+
+        time.sleep(interval_seconds)
+
+    return False
 
 
 
@@ -129,11 +149,9 @@ def set_camera_status(camera_id):
     if status not in (0, 1):
         return jsonify({"error": "status must be 0 or 1"}), 400
 
-    camera_status[camera.idCamera] = int(status)
     session = get_active_session_for_camera(camera_id)
 
     if session:
-        import requests
         try:
             detector_url = "http://127.0.0.1:5002/start" if status == 1 else "http://127.0.0.1:5002/stop"
 
@@ -148,14 +166,28 @@ def set_camera_status(camera_id):
                 
                 payload["embeddings"] = embeddings
 
-            res = requests.post(detector_url, json=payload)
-            if res.status_code == 200:
-                print(f"[DETECTOR] {'Started' if status == 1 else 'Stopped'} for session {session.id}")
-            else:
+            res = requests.post(detector_url, json=payload, timeout=10)
+            if res.status_code != 200:
                 print(f"[DETECTOR] Failed to {'start' if status == 1 else 'stop'}: {res.text}")
+                return jsonify({
+                    "error": f"Detector failed to {'start' if status == 1 else 'stop'}",
+                    "details": res.text
+                }), 502
+
+            expected_detector_state = "running" if status == 1 else "idle"
+            if not _wait_for_detector_state(expected_detector_state):
+                print(f"[DETECTOR] Timed out waiting for detector to become {expected_detector_state}")
+                return jsonify({
+                    "error": f"Detector did not become {expected_detector_state} in time"
+                }), 504
+
+            print(f"[DETECTOR] {'Started' if status == 1 else 'Stopped'} for session {session.id}")
 
         except Exception as e:
             print(f"[DETECTOR] Error contacting detector: {e}")
+            return jsonify({"error": "Could not contact detector service"}), 502
+
+    camera_status[camera.idCamera] = int(status)
 
     return jsonify({
         "message": "Camera status updated",

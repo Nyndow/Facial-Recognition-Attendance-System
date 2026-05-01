@@ -12,48 +12,49 @@ export const useCameraStatus = (
   options?: CameraStatusOptions
 ) => {
   const [cameraStatus, setCameraStatus] = useState<CameraStatus>(0);
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  const fetchStatus = useCallback(async () => {
+    if (!cameraId) return;
+
+    try {
+      const res = await api.get(`/camera-status/${cameraId}`);
+      setCameraStatus(res.data?.status === 1 ? 1 : 0);
+    } catch (err) {
+      console.error("Failed to fetch camera status.", err);
+    }
+  }, [cameraId]);
 
   // Fetch current status
   useEffect(() => {
     if (!cameraId) return;
-    let isMounted = true;
-
-    const fetchStatus = async () => {
-      try {
-        const res = await api.get(`/camera-status/${cameraId}`);
-        if (!isMounted) return;
-        setCameraStatus(res.data?.status === 1 ? 1 : 0);
-      } catch (err) {
-        console.error("Failed to fetch camera status.", err);
-      }
-    };
-
     fetchStatus();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [cameraId, options?.refreshKey]);
+  }, [cameraId, fetchStatus, options?.refreshKey]);
 
   // Toggle camera status
-const toggleCamera = useCallback(async () => {
-  if (!cameraId) {
-    console.warn("No camera assigned.");
-    return;
-  }
+  const toggleCamera = useCallback(async () => {
+    if (!cameraId) {
+      console.warn("No camera assigned.");
+      return;
+    }
 
-  setCameraStatus((prevStatus) => {
-    const newStatus: CameraStatus = prevStatus === 1 ? 0 : 1;
+    if (isUpdating) {
+      return;
+    }
 
-    api
-      .post(`/camera-status/${cameraId}`, { status: newStatus })
-      .catch((err) => {
-        console.error("Failed to update camera status.", err);
-      });
+    const nextStatus: CameraStatus = cameraStatus === 1 ? 0 : 1;
 
-    return newStatus;
-  });
-}, [cameraId]);
+    setIsUpdating(true);
+    try {
+      const res = await api.post(`/camera-status/${cameraId}`, { status: nextStatus });
+      setCameraStatus(res.data?.status === 1 ? 1 : 0);
+    } catch (err) {
+      console.error("Failed to update camera status.", err);
+      await fetchStatus();
+    } finally {
+      setIsUpdating(false);
+    }
+  }, [cameraId, cameraStatus, fetchStatus, isUpdating]);
 
-  return { cameraStatus, toggleCamera };
+  return { cameraStatus, toggleCamera, isUpdating };
 };

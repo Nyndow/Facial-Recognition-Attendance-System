@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import api from "@/lib/api";
 
 export interface StudentInfo {
@@ -13,8 +13,12 @@ export const useSessionStudents = (sessionId: number | null) => {
   const [students, setStudents] = useState<StudentInfo[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchStudents = async () => {
-    if (!sessionId) return;
+  const fetchStudents = useCallback(async () => {
+    if (!sessionId) {
+      setStudents([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const res = await api.get(`/session_students?session_id=${sessionId}`);
@@ -25,11 +29,34 @@ export const useSessionStudents = (sessionId: number | null) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [sessionId]);
 
   useEffect(() => {
     fetchStudents();
-  }, [sessionId]);
+  }, [fetchStudents]);
 
-  return { students, loading, fetchStudents };
+  const updateStudentPresentStatus = useCallback(
+    async (student: StudentInfo, present: boolean) => {
+      if (!sessionId) return;
+
+      if (student.attendance_id) {
+        await api.put(`/attendance/${student.attendance_id}`, {
+          student_id: student.id,
+          class_session_id: sessionId,
+          present,
+        });
+      } else {
+        await api.post("/attendance", {
+          student_id: student.id,
+          class_session_id: sessionId,
+          present,
+        });
+      }
+
+      await fetchStudents();
+    },
+    [fetchStudents, sessionId]
+  );
+
+  return { students, loading, fetchStudents, updateStudentPresentStatus };
 };
