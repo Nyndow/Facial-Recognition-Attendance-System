@@ -22,6 +22,7 @@ import {
   VideoOff,
   CalendarClock,
   Shield,
+  ClipboardList,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useSessions } from "@/hooks/useSessions";
@@ -97,6 +98,7 @@ export default function Sidebar() {
         { href: "/dashboard/admin", label: "Admin Home", icon: <Shield size={18} /> },
         { href: "/dashboard/admin/users", label: "Users", icon: <Users size={18} /> },
         { href: "/dashboard/admin/students", label: "Students", icon: <GraduationCap size={18} /> },
+        { href: "/dashboard/admin/attendance", label: "Attendance", icon: <ClipboardList size={18} /> },
         { href: "/dashboard/admin/classes", label: "Classes", icon: <BookOpen size={18} /> },
         { href: "/dashboard/admin/teachers", label: "Teachers", icon: <Presentation size={18} /> },
         { href: "/dashboard/admin/rooms", label: "Rooms", icon: <DoorOpen size={18} /> },

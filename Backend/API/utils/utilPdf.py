@@ -30,12 +30,12 @@ def generate_attendance_pdf(session, students) -> BytesIO:
     elements.append(Spacer(1, 12))
 
     # TABLE
-    table_data = [["No", "Name", "Matricule", "Status"]]
+    table_data = [["Name", "Matricule", "Status"]]
     for idx, s in enumerate(students, start=1):
         status = "PRESENT" if s.get("present") else "ABSENT"
-        table_data.append([str(idx), s.get("name", ""), s.get("matricule", ""), status])
+        table_data.append([s.get("name", ""), s.get("matricule", ""), status])
 
-    table = Table(table_data, colWidths=[40, 200, 100, 80])
+    table = Table(table_data, colWidths=[200, 100, 80])
     table.setStyle(
         TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#0f172a")),
