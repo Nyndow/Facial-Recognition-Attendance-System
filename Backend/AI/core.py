@@ -79,6 +79,18 @@ def compare_embeddings(
             print(f"[ATTENDANCE ERROR] {res.text}")
     except Exception as e:
         print(f"[ATTENDANCE FAIL] {e}")
+        
+def mark_attendance(session_id, student_id):
+    try:
+        url = f"http://localhost:5000/set-attendance/{session_id}"
+        res = requests.post(url, json={"student_id": student_id}, timeout=2)
+
+        if res.status_code == 200:
+            print(f"[ATTENDANCE] Marked present → {student_id}")
+        else:
+            print(f"[ATTENDANCE ERROR] {res.text}")
+    except Exception as e:
+        print(f"[ATTENDANCE FAIL] {e}")
 
 def run_detection(
     session_id,
@@ -283,3 +295,4 @@ def extract_embedding_from_array(img: np.ndarray) -> np.ndarray | None:
     crop_face_resized = cv2.resize(crop_face, (160, 160), interpolation=cv2.INTER_CUBIC)
 
     return embedder.embed(crop_face_resized)
+
