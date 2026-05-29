@@ -124,7 +124,7 @@ def get_camera_status(camera_id):
     has_active_session = _has_active_session_for_camera(camera.idCamera)
 
     if has_active_session:
-        status = camera_status.get(camera.idCamera, 1)
+        status = camera_status.get(camera.idCamera, 0)
         camera_status[camera.idCamera] = status
         print(f"[STATUS] Camera {camera.idCamera} active session detected, status={status}")
     else:
